@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISTA Datavis Sketch</title>
+    <script src="./node_modules/p5/lib/p5.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <script>
+    
+        // KEYS
+        // Left, Right ... Prev page / next page
+        // S ... Save page (PNG)
+        
+        // --------------------------------------------------------------------------------
+    
+        // Main space for SNP Markers
+        const SPACE_MAIN = 1800;
+        
+        // Space for ID string
+        const SPACE_LEFT = 100;
+        
+        // Sapce for Color Marker (Red/Yellow)
+        const SPACE_RIGHT = 100;
+        
+        // Number of Samples (line) per page
+        const COUNT = 150;
+        
+        // Show the ID text?
+        const SHOW_ID = true;
+        
+        // Show the center circle (yellow/red marker)?
+        const SHOW_SPOT = true;
+        
+        // Show the bottom "timeline" markings
+        const SHOW_TIMELINE = true;
+        
+        // Adjust size of bottom "timeline" markings
+        const TIMELINE_SCALE = 2.0;
+        
+        // Colors for SNP values 0/1/2
+        const COL = {
+            0: [255, 0, 0],
+            1: [0, 255, 0],
+            2: [0, 0, 255],
+        };
+        
+        // Color for SNP no data
+        const COL_NODATA = [0, 0, 0];
+        
+        // Color for Red value
+        const COL_R = [255, 0, 0];
+        
+        // Color for Yellow value
+        const COL_Y = [255, 255, 0];
+    
+        // --------------------------------------------------------------------------------
+        
+        const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
+        const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
+        
+        let data;
+        let sample_offset = 0;
+        let start_idx, end_idx;
+        const sketch_ts = timestamp();
+
+        
+        function preload() {
+            data = loadTable('./data/dataMartin.csv', 'csv', 'header');
+            console.log(data);
+        }
+    
+        function setup() {
+            createCanvas(SPACE_MAIN + SPACE_LEFT + SPACE_RIGHT, COUNT * SPACE_MAIN/101);
+            noLoop();
+            pixelDensity(1);
+        }
+        
+        // Get sample data in a convenient form
+        function get_sample(idx) {
+            const row = data.rows[idx];
+            // console.log(row);
+            
+            // alive/year data
+            const alive = {};
+            const years = [];
+            for (let year of YEARS) {
+                alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
+                if (alive[year] == 1) years.push(year);
+            }
+            years.sort();
+            
+            // SNPs
+            const snp_names = [];
+            for (let idx = SNP_IDX[0]; idx <= SNP_IDX[1]; idx++) {
+                snp_names.push(data.columns[idx])
+            }
+            // console.log(snp_names);
+            
+            const snps = {};
+            for (let key of snp_names) {
+                snps[key] = parseFloat( row.obj[key] );
+            }
+            
+            return {
+                id: row.obj.PlantID_final,
+                year_first: years[0],
+                year_last: years.at(-1),
+                years,
+                alive,
+                snps,
+                color: {
+                    red: parseFloat( row.obj.Red_final ),
+                    yellow: parseFloat( row.obj.Yellow_final ),
+                    pheno_cat: row.obj.phenoCat_final,
+                },
+            };
+        }
+
+        // statistics/range of values
+        function get_stats() {
+            const values_snp = new Set();
+            const values_red = new Set();
+            const values_yellow = new Set();
+            const values_pheno_cat = new Set();
+            const range_red = [ 9999, 0 ];
+            const range_yellow = [ 9999, 0 ];
+            
+            for (let idx=0; idx<data.rows.length; idx++) {
+                const s = get_sample(idx);
+                for (let val of Object.values(s.snps)) {
+                    values_snp.add(val);
+                }
+                
+                values_red.add( s.color.red );
+                values_yellow.add( s.color.yellow );
+                values_pheno_cat.add( s.color.pheno_cat );
+                
+                if (s.color.red < range_red[0]) range_red[0] = s.color.red;
+                if (s.color.red > range_red[1]) range_red[1] = s.color.red;
+                if (s.color.yellow < range_yellow[0]) range_yellow[0] = s.color.yellow;
+                if (s.color.yellow > range_yellow[1]) range_yellow[1] = s.color.yellow;
+            }
+            
+            function sorted(arr) {
+                arr.sort();
+                return arr;
+            }
+            
+            return {
+                values_snp: sorted( Array.from(values_snp) ),
+                values_red: sorted( Array.from(values_red) ),
+                values_yellow: sorted( Array.from(values_yellow) ),
+                values_pheno_cat: sorted(Array.from(values_pheno_cat)),
+                range_red,
+                range_yellow,
+            };
+        }
+        
+        // Draw single sample "Linear Style"
+        function draw_sample(idx) {
+            // console.log("SAMPLE #" + idx);
+            let s = get_sample(idx);
+            // console.log(s);
+            
+            const cell_w = SPACE_MAIN / 101; // 101 SNP markers in dataset
+            const cell_h = cell_w;
+            
+            // blendMode(BLEND);
+            noStroke();
+            rectMode(CORNER);
+            for ( let [idx, val] of Object.values(s.snps).entries() ) {
+                const x = idx * cell_w;
+                const y = 0
+                if ( val < 0) {
+                    fill( ...COL_NODATA );
+                } else {
+                    fill( ...COL[val] );
+                }
+                rect(x+SPACE_LEFT, y, cell_w, cell_h);
+            }
+            
+            // spot with flower color
+            if (SHOW_SPOT) {
+                const spot_w = SPACE_RIGHT;
+                const spot_h = cell_h;
+                fill(255);
+                // stroke(0);
+                // strokeWeight(1);
+                push();
+                translate(width-SPACE_RIGHT, 0);
+                rect(0, 0, spot_w, spot_h);
+                noStroke();
+                
+                // arc left (red)
+                if (s.color.red < 0) {
+                    fill(0);
+                } else {
+                    let alpha = map(s.color.red, 0, 5, 0, 255);
+                    fill(...COL_R, alpha);
+                }
+                rect(0, 0, spot_w/2, spot_h);
+                
+                // arc right (yellow)
+                if (s.color.yellow < 0) {
+                    fill(0);
+                } else {
+                    let alpha = map(s.color.yellow, 0, 5, 0, 255);
+                    fill(...COL_Y, alpha);
+                }
+                rect(spot_w/2, 0, spot_w/2, cell_h);
+                pop();
+            }
+            
+            // timeline
+            if (SHOW_TIMELINE) {
+                fill(255, 255);
+                // blendMode(BLEND);
+                rectMode(CENTER);
+                const marker_w = cell_w * 0.33 * TIMELINE_SCALE;
+                const marker_h = cell_h * 0.33 * TIMELINE_SCALE;
+                push();
+                translate(SPACE_LEFT, 0);
+                for (let year of s.years) {
+                    let x = map(year, 2009, 2019, 0, width);
+                    rect(x, cell_h - marker_h / 2, marker_w, marker_h);
+                }
+                // connector from first to last year
+                if (s.year_first != s.year_last) {
+                    let x_start = map(s.year_first, 2009, 2019, 0, width);
+                    let x_end   = map(s.year_last, 2009, 2019, 0, width);
+                    rectMode(CORNER);
+                    rect(x_start + marker_w/2, cell_h - marker_h/3, x_end - x_start - marker_w, marker_h/3);
+                }
+                pop();
+            }
+            
+            // draw id
+            if (SHOW_ID) {
+                // blendMode(BLEND);
+                fill(255);
+                noStroke();
+                rectMode(CORNER);
+                rect(0, 0, SPACE_LEFT, cell_h);
+                textAlign(LEFT, CENTER);
+                textSize(cell_h);
+                fill(0, 255);
+                stroke(255);
+                strokeWeight(2);
+                for (let [idx, ch] of s.id.split('').entries() ) {
+                    let x = 5 + idx * (20);
+                    text(ch, x, cell_h/2);
+                }
+            }
+        }
+        
+        // Automatically scale so x_count fits width
+        function draw_fabric(count=1, offset=0) {
+            start_idx = offset;
+            end_idx = Math.min(offset + count - 1, data.rows.length - 1);
+            
+            console.log(`SAMPLES #${start_idx}–#${end_idx}`);
+            
+            let i = 0;
+            for (let idx=start_idx; idx<=end_idx; idx++) {
+                let y = i * (SPACE_MAIN / 101);
+                push();
+                translate(0, y);
+                draw_sample(idx);
+                pop();
+                i++;
+            }
+        }
+        
+        function draw() {
+            background(0);
+            draw_fabric(COUNT, sample_offset);
+        }
+        
+        function timestamp() {
+            return (new Date()).toISOString();
+        }
+        
+        function saveFrame(ts = undefined) {
+            if (ts == undefined) ts = timestamp();
+            saveCanvas(`${ts}_${start_idx.toString().padStart(5, '0')}-${end_idx.toString().padStart(5, '0')}.png`);
+        }
+        
+        function scroll_fabric(offset = 1) {
+            sample_offset += offset;
+            
+            if (sample_offset >= data.rows.length) {
+                sample_offset = 0;
+            } else if (sample_offset < 0) {
+                sample_offset = data.rows.length - (data.rows.length % offset);
+                if (offset == -1) sample_offset -= 1;
+            }
+            
+            redraw();
+        }
+        
+        function keyPressed(e) {
+            if (e.key == 'ArrowLeft') {
+                scroll_fabric(-COUNT);
+            } else if (e.key == 'ArrowRight') {
+                scroll_fabric(COUNT);
+            } else if (e.key == 's') {
+                saveFrame(sketch_ts);
+            }
+        }
+        
+    </script>
+</body>
+</html>

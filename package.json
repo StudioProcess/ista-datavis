@@ -1,0 +1,23 @@
+{
+  "name": "ista-datavis",
+  "version": "0.1.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "live-server ."
+  },
+  "keywords": [],
+  "author": "Martin Grödl <martin@process.studio> (https://process.studio)",
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": "^22.17.1",
+    "npm": "^11.5.1"
+  },
+  "dependencies": {
+    "p5": "1.11"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

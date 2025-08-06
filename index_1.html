@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISTA Datavis Sketch</title>
+    <script src="./node_modules/p5/lib/p5.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <script>
+        
+        // KEYS
+        // Left, Right ... Prev sample / Next sample
+        // S ... Save Sample (PNG)
+        // X ... Save all samples consecutively
+        
+        // --------------------------------------------------------------------------------
+    
+        // Colors for SNP values 0/1/2
+        const COL = {
+            0: [255, 0, 0],
+            1: [0, 255, 0],
+            2: [0, 0, 255],
+        };
+        
+        // Color for SNP no data
+        const COL_NODATA = [0, 0, 0];
+        
+        // Color for Red value
+        const COL_R = [255, 0, 0];
+        
+        // Color for Yellow value
+        const COL_Y = [255, 255, 0];
+        
+        // Start / end index when using "Save all" (-1 means last)
+        const SAVE_ALL = [0, -1];
+    
+        // --------------------------------------------------------------------------------
+        
+        const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
+        const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
+        // Not used:
+        // const COLORS = { "Y": "Yellow", "FR": "Full red", "O": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
+        let data; // CSV data
+        let sample_idx = 0; // current sample index
+        
+        
+        function preload() {
+            data = loadTable('./data/dataMartin.csv', 'csv', 'header');
+            console.log(data);
+        }
+    
+        function setup() {
+            createCanvas(2000, 2000);
+            noLoop();
+            pixelDensity(1);
+        }
+        
+        // Get sample data in a convenient form
+        function get_sample(idx) {
+            const row = data.rows[idx];
+            // console.log(row);
+            
+            // alive/year data
+            const alive = {};
+            const years = [];
+            for (let year of YEARS) {
+                alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
+                if (alive[year] == 1) years.push(year);
+            }
+            years.sort();
+            
+            // SNPs
+            const snp_names = [];
+            for (let idx = SNP_IDX[0]; idx <= SNP_IDX[1]; idx++) {
+                snp_names.push(data.columns[idx])
+            }
+            // console.log(snp_names);
+            
+            const snps = {};
+            for (let key of snp_names) {
+                snps[key] = parseFloat( row.obj[key] );
+            }
+            
+            return {
+                id: row.obj.PlantID_final,
+                year_first: years[0],
+                year_last: years.at(-1),
+                years,
+                alive,
+                snps,
+                color: {
+                    red: parseFloat( row.obj.Red_final ),
+                    yellow: parseFloat( row.obj.Yellow_final ),
+                    pheno_cat: row.obj.phenoCat_final,
+                },
+            };
+        }
+
+        // Statistics / Print range of values
+        function get_stats() {
+            const values_snp = new Set();
+            const values_red = new Set();
+            const values_yellow = new Set();
+            const values_pheno_cat = new Set();
+            const range_red = [ 9999, 0 ];
+            const range_yellow = [ 9999, 0 ];
+            
+            for (let idx=0; idx<data.rows.length; idx++) {
+                const s = get_sample(idx);
+                for (let val of Object.values(s.snps)) {
+                    values_snp.add(val);
+                }
+                
+                values_red.add( s.color.red );
+                values_yellow.add( s.color.yellow );
+                values_pheno_cat.add( s.color.pheno_cat );
+                
+                if (s.color.red < range_red[0]) range_red[0] = s.color.red;
+                if (s.color.red > range_red[1]) range_red[1] = s.color.red;
+                if (s.color.yellow < range_yellow[0]) range_yellow[0] = s.color.yellow;
+                if (s.color.yellow > range_yellow[1]) range_yellow[1] = s.color.yellow;
+            }
+            
+            function sorted(arr) {
+                arr.sort();
+                return arr;
+            }
+            
+            return {
+                values_snp: sorted( Array.from(values_snp) ),
+                values_red: sorted( Array.from(values_red) ),
+                values_yellow: sorted( Array.from(values_yellow) ),
+                values_pheno_cat: sorted(Array.from(values_pheno_cat)),
+                range_red,
+                range_yellow,
+            };
+        }
+        
+        // Draw single sample
+        function draw_sample(idx) {
+            console.log("SAMPLE #" + sample_idx);
+            
+            let s = get_sample(idx);
+            console.log(s);
+            
+            const cell_w = width / 10;
+            const cell_h = height / 10;
+            
+            blendMode(BLEND);
+            noStroke();
+            rectMode(CORNER);
+            for ( let [idx, val] of Object.values(s.snps).entries() ) {
+                const x = (idx % 10) * cell_w;
+                const y = Math.floor(idx / 10) * cell_h;
+                if ( val < 0) {
+                    fill( ...COL_NODATA );
+                } else {
+                    fill( ...COL[val] );
+                }
+                rect(x, y, cell_w, cell_h);
+            }
+            
+            // spot with flower color
+            const spot_w = cell_w * 2 * 2/3;
+            const spot_h = cell_h * 2 * 2/3;
+            fill(255);
+            // stroke(0);
+            // strokeWeight(1);
+            ellipse(width/2, height/2, spot_w, spot_h);
+            noStroke();
+            
+            // arc left (red)
+            if (s.color.red < 0) {
+                fill(0);
+            } else {
+                let alpha = map(s.color.red, 0, 5, 0, 255);
+                fill(...COL_R, alpha);
+            }
+            arc(width/2, height/2, spot_w, spot_h, HALF_PI, HALF_PI+PI);
+            
+            // arc right (yellow)
+            if (s.color.yellow < 0) {
+                fill(0);
+            } else {
+                let alpha = map(s.color.yellow, 0, 5, 0, 255);
+                fill(...COL_Y, alpha);
+            }
+            arc(width/2, height/2, spot_w, spot_h, HALF_PI+PI, HALF_PI+TWO_PI);
+            
+            // timeline
+            fill(255, 255);
+            blendMode(BLEND);
+            rectMode(CENTER);
+            const marker_w = cell_w * 0.33;
+            const marker_h = cell_h * 0.33;
+            for (let year of s.years) {
+                let x = map(year, 2009, 2019, 0, width);
+                rect(x, height - marker_h / 2, marker_w, marker_h);
+            }
+            // connector from first to last year
+            if (s.year_first != s.year_last) {
+                let x_start = map(s.year_first, 2009, 2019, 0, width);
+                let x_end   = map(s.year_last, 2009, 2019, 0, width);
+                rectMode(CORNER);
+                rect(x_start + marker_w/2, height - marker_h/3, x_end - x_start - marker_w, marker_h/3);
+            }
+            
+            // draw id
+            blendMode(BLEND);
+            textAlign(CENTER, CENTER);
+            textSize(cell_h * 2/3);
+            fill(255, 255);
+            stroke(0);
+            strokeWeight(2);
+            for (let [idx, ch] of s.id.split('').entries() ) {
+                let x = cell_w + idx * (cell_w * 2);
+                text(ch, x, height - cell_h/2);
+            }
+            
+        }
+        
+        function draw() {
+            background(255);
+            
+            // const stats = get_stats();
+            // console.log(stats);
+            // console.log( JSON.stringify(stats, null, 2) )
+            
+            draw_sample(sample_idx);
+        }
+        
+        function next_sample(offset = 1) {
+            sample_idx += offset;
+            
+            if (sample_idx >= data.rows.length) {
+                sample_idx = 0;
+            } else if (sample_idx < 0) {
+                sample_idx = data.rows.length - (data.rows.length % offset);
+                if (offset == -1) sample_idx -= 1;
+            }
+            
+            redraw();
+        }
+        
+        function timestamp() {
+            return (new Date()).toISOString();
+        }
+        
+        function saveSample(idx = sample_idx, ts = undefined) {
+            sample_idx = idx;
+            redraw();
+            if (ts == undefined) ts = timestamp();
+            saveCanvas(`${ts}_${idx.toString().padStart(5, '0')}.png`);
+        }
+        
+        function record(start=0, end=-1) {
+            const SAVE_INTERVAL = 100;
+            
+            while (start < 0) {
+                start += data.rows.length;
+            }
+            while (end < 0) {
+                end += data.rows.length;
+            }
+            console.log(`RECORDING #${start}–#${end}`);
+            
+            const ts = timestamp();
+            
+            let idx = start;
+            function saveloop() {
+                saveSample(idx, ts);
+                idx += 1;
+                if (idx <= end) {
+                    setTimeout(saveloop, SAVE_INTERVAL)
+                }
+            }
+            saveloop();
+        }
+        
+        function keyPressed(e) {
+            if (e.key == 'ArrowLeft') {
+                next_sample(-1);
+            } else if (e.key == 'ArrowRight') {
+                next_sample(1);
+            } else if (e.key == 's') {
+                saveSample();
+            } else if (e.key == 'x') {
+                record(...SAVE_ALL);
+            }
+        }
+        
+    </script>
+</body>
+</html>
