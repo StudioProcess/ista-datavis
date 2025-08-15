@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISTA Datavis Sketch</title>
+    <script src="./node_modules/p5/lib/p5.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <style>
+        main { display: none; }
+        pre {
+            background: white;
+            width: 100dvw;
+            height: 100dvh;
+            white-space: pre-wrap;
+            overflow-y: scroll;
+        }
+    </style>
+    <pre id="console">
+        
+    </pre>
+    <script>
+        
+        // --------------------------------------------------------------------------------
+        
+        const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
+        const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
+        // Not used:
+        // const COLORS = { "Y": "Yellow", "FR": "Full red", "O": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
+        let data; // CSV data
+        let sample_idx = 0; // current sample index
+        
+        const orig_log = console.log;
+        
+        //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value
+        function getCircularReplacer() {
+          const ancestors = [];
+          return function (key, value) {
+            if (typeof value !== "object" || value === null) {
+              return value;
+            }
+            // `this` is the object that value is contained in,
+            // i.e., its direct parent.
+            while (ancestors.length > 0 && ancestors.at(-1) !== this) {
+              ancestors.pop();
+            }
+            if (ancestors.includes(value)) {
+              return "[Circular]";
+            }
+            ancestors.push(value);
+            return value;
+          };
+        }
+        
+        function my_log(...str) {
+            orig_log(...str);
+            str = str.map((el) => {
+                if (typeof el == 'object') return JSON.stringify(el, getCircularReplacer(), 2);
+                return el
+            });
+            document.querySelector("#console").textContent += str.join(" ") + "\n";
+        }
+        console.log = my_log;
+        
+        function preload() {
+            data = loadTable('./data/dataMartin.csv', 'csv', 'header');
+            orig_log(data);
+        }
+    
+        function setup() {
+            createCanvas(2000, 2000);
+            noLoop();
+            pixelDensity(1);
+        }
+        
+        // Get sample data in a convenient form
+        function get_sample(idx) {
+            const row = data.rows[idx];
+            // console.log(row);
+            
+            // alive/year data
+            const alive = {};
+            const years = [];
+            for (let year of YEARS) {
+                alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
+                if (alive[year] == 1) years.push(year);
+            }
+            years.sort();
+            
+            // SNPs
+            const snp_names = [];
+            for (let idx = SNP_IDX[0]; idx <= SNP_IDX[1]; idx++) {
+                snp_names.push(data.columns[idx])
+            }
+            // console.log(snp_names);
+            
+            const snps = {};
+            for (let key of snp_names) {
+                snps[key] = parseFloat( row.obj[key] );
+            }
+            
+            return {
+                id: row.obj.PlantID_final,
+                year_first: years[0],
+                year_last: years.at(-1),
+                years,
+                alive,
+                snps,
+                color: {
+                    red: parseFloat( row.obj.Red_final ),
+                    yellow: parseFloat( row.obj.Yellow_final ),
+                    pheno_cat: row.obj.phenoCat_final,
+                },
+                geolocation: {
+                    lat: parseFloat( row.obj.Latitude ),
+                    long: parseFloat( row.obj.Longitude ),
+                    altitude: parseFloat( row.obj.Altitude ),
+                    easting: parseFloat( row.obj.Easting ),
+                    northing: parseFloat( row.obj.Northing ),
+                }
+            };
+        }
+        
+        function make_minmax(min = -Infinity, max = Infinity) {
+            let v_min = max;
+            let v_max = min;
+            let n = 0;
+            
+            return {
+                add: function(val) {
+                    if (val < min || val > max) return;
+                    n++;
+                    if (val < v_min) v_min = val;
+                    if (val > v_max) v_max = val;
+                },
+                get: function() {
+                    return {
+                        min: v_min,
+                        max: v_max,
+                        count: n,
+                    };
+                }
+            }
+        }
+
+        // Statistics / Print range of values
+        function get_stats() {
+            function add(obj, val) {
+                if (val in obj) {
+                    obj[val] += 1;
+                } else {
+                    obj[val] = 1;
+                }
+            }
+            
+            const values_snp = {};
+            const values_red = new Set();
+            const values_yellow = new Set();
+            const values_pheno_cat = new Set();
+            
+            const range_red = make_minmax(0);
+            const range_yellow = make_minmax(0);
+            const range_lat = make_minmax();
+            const range_long = make_minmax();
+            const range_altitude = make_minmax();
+            const range_easting = make_minmax();
+            const range_northing = make_minmax();
+            
+            for (let idx=0; idx<data.rows.length; idx++) {
+                const s = get_sample(idx);
+                for (let val of Object.values(s.snps)) {
+                    add( values_snp, val );
+                }
+                
+                add( values_red, s.color.red );
+                add( values_yellow, s.color.yellow );
+                add( values_pheno_cat, s.color.pheno_cat );
+                
+                range_red.add(s.color.red);
+                range_yellow.add(s.color.yellow);
+                range_lat.add(s.geolocation.lat);
+                range_long.add(s.geolocation.long);
+                range_altitude.add(s.geolocation.altitude);
+                range_easting.add(s.geolocation.easting);
+                range_northing.add(s.geolocation.northing);
+            }
+            
+            // function sorted(arr) {
+            //     arr.sort();
+            //     return arr;
+            // }
+            
+            function sorted(obj) {
+                return Object.keys(obj).sort().reduce(
+                  (out, key) => {
+                    out[key] = obj[key];
+                    return out;
+                  },
+                  {}
+                );
+            }
+            
+            return {
+                values_snp: sorted( values_snp ),
+                values_red: sorted( values_red ),
+                values_yellow: sorted( values_yellow ),
+                values_pheno_cat: sorted(values_pheno_cat),
+                range_red: range_red.get(),
+                range_yellow: range_yellow.get(),
+                range_lat: range_lat.get(),
+                range_long: range_long.get(),
+                range_altitude: range_altitude.get(),
+                range_easting: range_easting.get(),
+                range_northing: range_northing.get(),
+            };
+        }
+        
+        function draw() {
+            // console.log(data.columns);
+            
+            const stats = get_stats();
+            console.log(stats);
+        }
+        
+        function timestamp() {
+            return (new Date()).toISOString();
+        }
+        
+        //
+        // function keyPressed(e) {
+        //     if (e.key == 'ArrowLeft') {
+        //         next_sample(-1);
+        //     } else if (e.key == 'ArrowRight') {
+        //         next_sample(1);
+        //     } else if (e.key == 's') {
+        //         saveSample();
+        //     } else if (e.key == 'x') {
+        //         record(...SAVE_ALL);
+        //     }
+        // }
+        
+    </script>
+</body>
+</html>
