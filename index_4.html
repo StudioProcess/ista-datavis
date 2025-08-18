@@ -12,11 +12,17 @@
     <script>
     
         // KEYS
-        // Left, Right ... Prev page / next page
-        // +/-  ... Zoom In/Out
+        
+        // SPACE ... Toggle mesh
+        
+        // RMB Drag ... Pan
+        // Wheel ... Zoom
         // 0 ... Reset Zoom
+        // +/-  ... Zoom In/Out
         // WASD ... Pan Up/Left/Down/Right
-        // 1-9 ... Dithering Strength
+        
+        // Left, Right ... Prev page / next page
+        // 1-9 ... Dithering strength
         // X ... Save image (PNG)
         
         // --------------------------------------------------------------------------------
@@ -29,6 +35,8 @@
         
         // Color for Yellow value
         const COL_Y = [255, 255, 0];
+        
+        const FRAMERATE = 30;
         
         // --------------------------------------------------------------------------------
         
@@ -48,6 +56,7 @@
         let dither_bias = -0.2;
         let dither_steps = 4;
         let dither_strength = 0.25;
+        let show_mesh = false;
         
         function preload() {
             data = loadTable('./data/dataMartin.csv', 'csv', 'header');
@@ -218,12 +227,11 @@
         function setup() {
             createCanvas(2160, 3840, WEBGL);
             pixelDensity(1);
-            // noLoop();
-            // noFill();
-            // noStroke();
-            // ortho(-width/2, width/2, -height/2, height/2, 0, 2000);
-            noStroke();
             ortho();
+            strokeWeight(0.5);
+            
+            // textureWrap(REPEAT, REPEAT);
+            frameRate(FRAMERATE);
             
             // geo = buildMeshCell(-500, 0, COLOR_0, COLOR_1, COLOR_2);
             
@@ -233,25 +241,26 @@
         function draw() {
             background(255);
             
+            orbitControl(0, 0, 1);
+            
             scale(zoom);
             translate(shift_x * width/100, shift_y * width/100);
-            
-            // shader(color_shader);
-            // stroke(255);
             
             shader(my_shader);
             my_shader.setUniform('uNoiseTexture', noise_texture);
             my_shader.setUniform('uDitherBias', dither_bias);
             my_shader.setUniform('uDitherStrength', dither_strength);
             my_shader.setUniform('uDitherSteps', dither_steps);
-            model(geo);
-
-            // square(0,0,300);
+            my_shader.setUniform('uRandomness', [random(), random(), random(), random(),]);
+            my_shader.setUniform('uTime', millis() / 1000);
+            my_shader.setUniform('uFrame', frameCount)
             
-            // box(500);
-            // translate(100,100,-100);
-            // rotate(PI/4, [1,1,0]);
-            // box(500);
+            if (show_mesh) {
+                stroke(50);
+            } else {
+                noStroke();
+            }
+            model(geo);
         }
         
         function timestamp() {
@@ -301,6 +310,8 @@
             } else if (e.key >= '1' && e.key <= '9') {
                 dither_strength = map(e.keyCode - 48, 1, 9, 0, 1);
                 console.log(`Dithering Strength: ${dither_strength}`);
+            } else if (e.key == ' ') {
+                show_mesh = !show_mesh;
             }
         }
         
