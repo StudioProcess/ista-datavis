@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISTA Datavis Sketch</title>
+    <script src="./node_modules/p5/lib/p5.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <script>
+    
+        // KEYS
+        
+        // Left, Right ... Cycle through COLOR-RELEVANT SNPs
+        // Up, Down ... Cycle through all SNPs
+        // R ... Pick random SNP
+        
+        // SPACE ... Cycle view (Map, SNP display)
+        // S ... Save image (PNG)
+        
+        // --------------------------------------------------------------------------------
+        
+        const WIDTH = 1080;
+        
+        // Map border in meters
+        const BORDER = 1000;
+        
+        const ASPECT = (4691188.68583845 - 4684727.2878592) / (434653.007924495 - 410335.103808801);
+        const MAP_OPACITY = 150;
+        
+        // Color for Red value
+        const COL_R = [255, 0, 0];
+        
+        // Color for Yellow value
+        const COL_Y = [255, 255, 0];
+        
+        const COL = {
+            0: [255, 0, 0],
+            1: [0, 255, 0],
+            2: [0, 0, 255],
+        };
+        
+        const SNP_STYLE = 1; // 0 ... graph, 1 ... stacked bars
+        const BUCKETS = 255;
+        
+        // --------------------------------------------------------------------------------
+        
+        const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
+        const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
+        const COLOR_SNPS = ["ros_assembly_543443", "ros_assembly_715001", "s91_122561",  "s316_93292", "s316_257789", "s1187_290152"];
+        // Not used:
+        // const COLORS = { "Y": "Yellow", "FR": "Full red", "O": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
+        let data; // CSV data
+        let snp_names;
+        let color_snp_idx = 0; // current snp index (within COLOR_SNPS)
+        let snp_idx = 0;
+        let stats;
+        let map_image;
+        let locations_image;
+        let show_map = false;
+        let show_snps = false;
+        let view_mode = 0;
+        
+        function preload() {
+            data = loadTable('./data/dataMartin.csv', 'csv', 'header');
+            console.log(data);
+            map_image = loadImage('./images/hybrid_zone_map_red.png');
+        }
+    
+        function setup() {
+            createCanvas(WIDTH, WIDTH * ASPECT);
+            noLoop();
+            pixelDensity(1);
+            // stats = get_stats();
+            // console.log(stats);
+            locations_image = draw_locations();
+            
+            snp_names = data.columns.slice(SNP_IDX[0], SNP_IDX[1] + 1);
+            console.log(snp_names);
+            next_color_snp(0);
+        }
+        
+        function analyze_snp(name) {
+            const out = [];
+            for (let i=0; i<BUCKETS; i++) {
+                out.push({
+                    total: 0,
+                    no_data: 0,
+                    0: 0,
+                    1: 0,
+                    2: 0,
+                });
+            }
+            // sum all values
+            
+            for (let i=0; i<data.rows.length; i++) {
+                const s = get_sample(i);
+                const bucket_idx = int( map(s.geolocation.easting, 410335.103808801, 434653.007924495, 0, BUCKETS-1) );
+                const snp_value = s.snps[name];
+                out[bucket_idx]['total'] += 1;
+                if (snp_value < 0) {
+                    out[bucket_idx]['no_data'] += 1;
+                } else {
+                    out[bucket_idx][snp_value] += 1;
+                }
+            }
+            // // calculate distribution
+            // for (let i=0; i<BUCKETS; i++) {
+            //     const count = out[i]['counts']['total'];
+            //     const mapped = Object.entries(out[i]['counts']).map( ([k, v]) => {
+            //         return [k,  count > 0 ? v / count : 0];
+            //     });
+            //     out[i]['distribution'] = Object.fromEntries(mapped);
+            // }
+            return out;
+        }
+        
+        // Get sample data in a convenient form
+        function get_sample(idx) {
+            const row = data.rows[idx];
+            // console.log(row);
+            
+            // alive/year data
+            const alive = {};
+            const years = [];
+            for (let year of YEARS) {
+                alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
+                if (alive[year] == 1) years.push(year);
+            }
+            years.sort();
+            
+            // SNPs
+            const snp_names = data.columns.slice(SNP_IDX[0], SNP_IDX[1] + 1);
+            // console.log(snp_names);
+            
+            const snps = {};
+            for (let key of snp_names) {
+                snps[key] = parseFloat( row.obj[key] );
+            }
+            
+            return {
+                id: row.obj.PlantID_final,
+                year_first: years[0],
+                year_last: years.at(-1),
+                years,
+                alive,
+                snps,
+                color: {
+                    red: parseFloat( row.obj.Red_final ),
+                    yellow: parseFloat( row.obj.Yellow_final ),
+                    pheno_cat: row.obj.phenoCat_final,
+                },
+                geolocation: {
+                    lat: parseFloat( row.obj.Latitude ),
+                    long: parseFloat( row.obj.Longitude ),
+                    altitude: parseFloat( row.obj.Altitude ),
+                    easting: parseFloat( row.obj.Easting ),
+                    northing: parseFloat( row.obj.Northing ),
+                }
+            };
+        }
+        
+        function make_minmax(min = -Infinity, max = Infinity) {
+            let v_min = max;
+            let v_max = min;
+            let n = 0;
+            
+            return {
+                add: function(val) {
+                    if (val < min || val > max) return;
+                    n++;
+                    if (val < v_min) v_min = val;
+                    if (val > v_max) v_max = val;
+                },
+                get: function() {
+                    return {
+                        min: v_min,
+                        max: v_max,
+                        count: n,
+                    };
+                }
+            }
+        }
+
+        // Statistics / Print range of values
+        function get_stats() {
+            function add(obj, val) {
+                if (val in obj) {
+                    obj[val] += 1;
+                } else {
+                    obj[val] = 1;
+                }
+            }
+            
+            const values_snp = {};
+            const values_red = new Set();
+            const values_yellow = new Set();
+            const values_pheno_cat = new Set();
+            
+            const range_red = make_minmax(0);
+            const range_yellow = make_minmax(0);
+            const range_lat = make_minmax();
+            const range_long = make_minmax();
+            const range_altitude = make_minmax();
+            const range_easting = make_minmax();
+            const range_northing = make_minmax();
+            
+            for (let idx=0; idx<data.rows.length; idx++) {
+                const s = get_sample(idx);
+                for (let val of Object.values(s.snps)) {
+                    add( values_snp, val );
+                }
+                
+                add( values_red, s.color.red );
+                add( values_yellow, s.color.yellow );
+                add( values_pheno_cat, s.color.pheno_cat );
+                
+                range_red.add(s.color.red);
+                range_yellow.add(s.color.yellow);
+                range_lat.add(s.geolocation.lat);
+                range_long.add(s.geolocation.long);
+                range_altitude.add(s.geolocation.altitude);
+                range_easting.add(s.geolocation.easting);
+                range_northing.add(s.geolocation.northing);
+            }
+            
+            // function sorted(arr) {
+            //     arr.sort();
+            //     return arr;
+            // }
+            
+            function sorted(obj) {
+                return Object.keys(obj).sort().reduce(
+                  (out, key) => {
+                    out[key] = obj[key];
+                    return out;
+                  },
+                  {}
+                );
+            }
+            
+            return {
+                values_snp: sorted( values_snp ),
+                values_red: sorted( values_red ),
+                values_yellow: sorted( values_yellow ),
+                values_pheno_cat: sorted(values_pheno_cat),
+                range_red: range_red.get(),
+                range_yellow: range_yellow.get(),
+                range_lat: range_lat.get(),
+                range_long: range_long.get(),
+                range_altitude: range_altitude.get(),
+                range_easting: range_easting.get(),
+                range_northing: range_northing.get(),
+            };
+        }
+        
+        function draw_locations() {
+            const g = createGraphics(width, height);
+            g.noStroke();
+            for (let i=0; i<data.rows.length; i++) {
+                const s = get_sample(i);
+                const x = map(s.geolocation.easting, 410335.103808801 - BORDER, 434653.007924495 + BORDER, 0, width);
+                const y = map(s.geolocation.northing, 4684727.2878592 - BORDER, 4691188.68583845 + BORDER, height, 0);
+                
+                let OPACITY = 10;
+                
+                if (s.color.red > s.color.yellow) {
+                    g.fill(...COL_R, OPACITY);
+                } else if (s.color.red < s.color.yellow) {
+                    g.fill(...COL_Y, OPACITY);
+                } else if (s.color.red < 0) {
+                    g.fill(0, OPACITY)
+                } else {
+                    g.fill(255);
+                }
+                g.circle(x, y, 30);
+            }
+            return g;
+        }
+        
+        function draw_snp(name) {
+            let buckets = analyze_snp(name);
+            let prev_x;
+            let prev_val;
+            const step = width / buckets.length;
+            for (let i=0; i<buckets.length; i++) {
+                const x = map(i, 0, buckets.length-1, 0, width);
+                let val = [ 0, 0, 0 ];
+                if ( buckets[i]['total'] > 0) {
+                    val = [
+                        buckets[i][0] / buckets[i]['total'],
+                        buckets[i][1] / buckets[i]['total'],
+                        buckets[i][2] / buckets[i]['total'],
+                    ];
+                } else if (i > 0) {
+                    val = prev_val;
+                }
+                SNP_OPACITY = 250;
+                
+                if (SNP_STYLE == 1) {
+                    noStroke();
+                    rectMode(CORNERS);
+                    let prev_total = 0;
+                    for (let idx=0; idx<3; idx++) {
+                        fill(...COL[idx], SNP_OPACITY);
+                        // accident: 
+                        // rect(x, height - (prev_total + val[idx]) * height, x + step, height - (prev_total) * height);
+                        rect(x, height - (prev_total + val[idx]) * height, x + step, height - (prev_total) * height);
+                        prev_total += val[idx];
+                    }
+                } else {
+                    if (i > 0) {
+                        for (let idx=0; idx<3; idx++) {
+                            stroke(COL[idx]);
+                            line(x, height - val[idx] * height, prev_x, height - prev_val[idx] * height);
+                        }
+                    }
+                }
+                
+                prev_x = x;
+                prev_val = val;
+            }
+        }
+        
+        function draw() {
+            background(255);
+            
+            if (show_map) {
+                tint(255, MAP_OPACITY);
+                image(map_image, 0, 0, width, height);
+            }
+            
+            if (show_snps) {
+                const snp_name = snp_names[snp_idx];
+                console.log(snp_name);
+                draw_snp(snp_name);
+                textAlign(CENTER, BOTTOM);
+                textSize(16);
+                noStroke();
+                fill(255);
+                text(snp_name, width/2, height-10);
+            }
+            
+            noTint();
+            image(locations_image, 0, 0);
+        }
+        
+        function timestamp() {
+            return (new Date()).toISOString();
+        }
+        
+        function next_color_snp(offset = 1) {
+            color_snp_idx += offset;
+            while (color_snp_idx < 0) color_snp_idx += COLOR_SNPS.length;
+            color_snp_idx %= COLOR_SNPS.length;
+            snp_idx = snp_names.indexOf(COLOR_SNPS[color_snp_idx]);
+            redraw();
+        }
+        
+        function next_snp(offset = 1) {
+            snp_idx += offset;
+            while (snp_idx < 0) snp_idx += snp_names.length;
+            snp_idx %= snp_names.length;
+            redraw();
+        }
+        
+        function random_snp() {
+            snp_idx = int(random(0, snp_names.length));
+            redraw();
+        }
+        
+        function saveFrame(ts = undefined) {
+            if (ts == undefined) ts = timestamp();
+            saveCanvas(`${ts}_${start_idx.toString().padStart(5, '0')}-${end_idx.toString().padStart(5, '0')}.png`);
+        }
+        
+        function keyPressed(e) {
+            if (e.key == 'ArrowLeft') {
+                next_color_snp(-1);
+            } else if (e.key == 'ArrowRight') {
+                next_color_snp(1);
+            } else if (e.key == 'ArrowUp') {
+                next_snp(-1);
+            } else if (e.key == 'ArrowDown') {
+                next_snp(1);
+            } else if (e.key == 's') {
+                saveFrame();
+            } else if (e.key == 'r') {
+                random_snp();
+            } else if (e.key == ' ') {
+                view_mode = (view_mode + 1) % 3;
+                switch (view_mode) {
+                    case 0:
+                        show_map = false;
+                        show_snps = false;
+                        break;
+                    case 1:
+                        show_map = true;
+                        show_snps = false;
+                        break;
+                    case 2:
+                        show_map = false;
+                        show_snps = true;
+                }
+                redraw();
+            }
+        }
+        
+    </script>
+</body>
+</html>
