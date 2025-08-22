@@ -29,7 +29,7 @@
         const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
         const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
         // Not used:
-        // const COLORS = { "Y": "Yellow", "FR": "Full red", "O": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
+        const COLORS = { "Y": "Yellow", "FR": "Full red", "WO": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
         let data; // CSV data
         let sample_idx = 0; // current sample index
         
@@ -127,12 +127,14 @@
         function make_minmax(min = -Infinity, max = Infinity) {
             let v_min = max;
             let v_max = min;
+            let sum = 0;
             let n = 0;
             
             return {
                 add: function(val) {
                     if (val < min || val > max) return;
-                    n++;
+                    n += 1;
+                    sum += val
                     if (val < v_min) v_min = val;
                     if (val > v_max) v_max = val;
                 },
@@ -140,6 +142,7 @@
                     return {
                         min: v_min,
                         max: v_max,
+                        avg: sum / n,
                         count: n,
                     };
                 }
@@ -168,6 +171,15 @@
             const range_altitude = make_minmax();
             const range_easting = make_minmax();
             const range_northing = make_minmax();
+            const range_pheno_cat = {};
+            
+            for (let cat of Object.keys(COLORS)) {
+                range_pheno_cat[cat] = {
+                    red: make_minmax(),
+                    yellow: make_minmax(),
+                };
+            }
+            console.log(range_pheno_cat);
             
             for (let idx=0; idx<data.rows.length; idx++) {
                 const s = get_sample(idx);
@@ -186,6 +198,14 @@
                 range_altitude.add(s.geolocation.altitude);
                 range_easting.add(s.geolocation.easting);
                 range_northing.add(s.geolocation.northing);
+                
+                const cat = s.color.pheno_cat;
+                if (Object.keys(COLORS).includes(cat)) {
+                    if (s.color.red >= 0 && s.color.yellow >= 0) {
+                        range_pheno_cat[cat].red.add(s.color.red);
+                        range_pheno_cat[cat].yellow.add(s.color.yellow);
+                    }
+                }
             }
             
             // function sorted(arr) {
@@ -203,6 +223,14 @@
                 );
             }
             
+            const range_pheno_cat_out = {};
+            for (let [k, v] of Object.entries(range_pheno_cat)) {
+                range_pheno_cat_out[k] = {
+                    red: v.red.get(),
+                    yellow: v.yellow.get(),
+                }
+            }
+            
             return {
                 values_snp: sorted( values_snp ),
                 values_red: sorted( values_red ),
@@ -215,6 +243,7 @@
                 range_altitude: range_altitude.get(),
                 range_easting: range_easting.get(),
                 range_northing: range_northing.get(),
+                range_pheno_cat: range_pheno_cat_out,
             };
         }
         
