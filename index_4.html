@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <script>
+    <script type="module">
     
         // KEYS
         
@@ -40,13 +40,12 @@
         
         // --------------------------------------------------------------------------------
         
-        const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
-        const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
+        import data from './data.mjs'
+        import util from './util.mjs';
         
-        let data;
         let sample_offset = 0;
         let start_idx, end_idx;
-        const sketch_ts = timestamp();
+        const sketch_ts = util.timestamp();
         let zoom = 1;
         let shift_x = 0;
         let shift_y = 0;
@@ -59,58 +58,15 @@
         let show_mesh = false;
         
         function preload() {
-            data = loadTable('./data/dataMartin.csv', 'csv', 'header');
-            console.log(data);
             my_shader = loadShader('./shaders/dither.vert.glsl', './shaders/dither.frag.glsl');
-            noise_texture = loadImage('./images/LDR_RGBA_0.png');
-        }
-        
-        // Get sample data in a convenient form
-        function get_sample(idx) {
-            const row = data.rows[idx];
-            // console.log(row);
-            
-            // alive/year data
-            const alive = {};
-            const years = [];
-            for (let year of YEARS) {
-                alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
-                if (alive[year] == 1) years.push(year);
-            }
-            years.sort();
-            
-            // SNPs
-            const snp_names = [];
-            for (let idx = SNP_IDX[0]; idx <= SNP_IDX[1]; idx++) {
-                snp_names.push(data.columns[idx])
-            }
-            // console.log(snp_names);
-            
-            const snps = {};
-            for (let key of snp_names) {
-                snps[key] = parseFloat( row.obj[key] );
-            }
-            
-            return {
-                id: row.obj.PlantID_final,
-                year_first: years[0],
-                year_last: years.at(-1),
-                years,
-                alive,
-                snps,
-                color: {
-                    red: parseFloat( row.obj.Red_final ),
-                    yellow: parseFloat( row.obj.Yellow_final ),
-                    pheno_cat: row.obj.phenoCat_final,
-                },
-            };
+            noise_texture = loadImage('./images/1024_LDR_RGBA_0.png');
         }
         
         const COLOR_0 = '#ffd0d4';
         const COLOR_1 = '#ff2ac2';
         const COLOR_2 = '#ffffff';
         
-        CELL_INNER_DIAMETER = 0.85;
+        const CELL_INNER_DIAMETER = 0.85;
         
         let geo;
         
@@ -186,14 +142,14 @@
             beginGeometry();
             
             start_idx = sample_offset;
-            end_idx = Math.min(sample_offset + count - 1, data.rows.length - 1);
+            end_idx = Math.min(sample_offset + count - 1, data.num_samples() - 1);
             console.log(`SAMPLES #${start_idx}–#${end_idx}`)
             
             for (let i=0; i<count; i++) {
                 if (sample_offset + i > end_idx) {
                     break;
                 }
-                const s = get_sample(sample_offset + i);
+                const s = data.get_sample(sample_offset + i);
                 let c0;
                 if (s.color.yellow < 0) {
                     c0 = [0,0,0];
@@ -224,7 +180,10 @@
             console.log(geo);
         }
         
-        function setup() {
+        async function setup() {
+            await data.load('./data/dataMartin.csv');
+            console.log(data.raw());
+
             createCanvas(2160, 3840, WEBGL);
             pixelDensity(1);
             ortho();
@@ -263,22 +222,18 @@
             model(geo);
         }
         
-        function timestamp() {
-            return (new Date()).toISOString();
-        }
-        
         function saveFrame(ts = undefined) {
-            if (ts == undefined) ts = timestamp();
+            if (ts == undefined) ts = util.timestamp();
             saveCanvas(`${ts}_${start_idx.toString().padStart(5, '0')}-${end_idx.toString().padStart(5, '0')}.png`);
         }
         
         function page(offset = 1) {
             sample_offset += offset;
             
-            if (sample_offset >= data.rows.length) {
+            if (sample_offset >= data.num_samples()) {
                 sample_offset = 0;
             } else if (sample_offset < 0) {
-                sample_offset = data.rows.length - (data.rows.length % offset);
+                sample_offset = data.num_samples() - (data.num_samples() % offset);
                 if (offset == -1) sample_offset -= 1;
             }
             
@@ -314,6 +269,8 @@
                 show_mesh = !show_mesh;
             }
         }
+        
+        util.register_global(preload, setup, draw, keyPressed);
         
     </script>
 </body>

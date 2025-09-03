@@ -11,15 +11,16 @@ uniform float uFrame;
 varying vec2 vTexCoord;
 varying vec4 vVertexColor;
 
-const float ditherFPS = 6.0;
-
+const float ditherFPS = 15.0;
 
 vec4 blueNoiseDither(vec4 color) {
-    vec2 uv = mod(gl_FragCoord.xy, 1024.0) / 1024.0;
+    // Animation via texture atlas
+    float frame = uTime * ditherFPS;
+    vec2 uv_offset = vec2( floor(mod(frame, 4.0)), floor(mod(frame, 16.0) / 4.0) ) * 0.25;
+    vec2 uv = uv_offset + mod(gl_FragCoord.xy, 256.0) / 256.0 * 0.25;
+    float blue_noise = texture2D(uNoiseTexture, uv).r;
     
-    float blue_noise = texture2D(uNoiseTexture, uv).a;
-    
-    // Animated dithering
+    // Animated dithering (via color channels)
     // float blue_noise;
     // float idx = mod(uTime * ditherFPS, 3.0);
     // if (idx < 1.0) {

@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <script>
+    <script type="module">
     
         // KEYS
         
@@ -47,12 +47,11 @@
         
         // --------------------------------------------------------------------------------
         
-        const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
-        const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
+        import data from './data.mjs'
+        import util from './util.mjs';
+        
         const COLOR_SNPS = ["ros_assembly_543443", "ros_assembly_715001", "s91_122561",  "s316_93292", "s316_257789", "s1187_290152"];
-        // Not used:
-        // const COLORS = { "Y": "Yellow", "FR": "Full red", "O": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
-        let data; // CSV data
+
         let snp_names;
         let color_snp_idx = 0; // current snp index (within COLOR_SNPS)
         let snp_idx = 0;
@@ -64,21 +63,20 @@
         let view_mode = 0;
         
         function preload() {
-            data = loadTable('./data/dataMartin.csv', 'csv', 'header');
-            console.log(data);
             map_image = loadImage('./images/hybrid_zone_map_red.png');
         }
     
-        function setup() {
-            createCanvas(WIDTH, WIDTH * ASPECT);
+        async function setup() {
+            await data.load('./data/dataMartin.csv');
+            console.log(data.raw());
+            snp_names = data.snp_names();
+            console.log(snp_names);
+            
             noLoop();
             pixelDensity(1);
-            // stats = get_stats();
-            // console.log(stats);
+            createCanvas(WIDTH, WIDTH * ASPECT);
             locations_image = draw_locations();
             
-            snp_names = data.columns.slice(SNP_IDX[0], SNP_IDX[1] + 1);
-            console.log(snp_names);
             next_color_snp(0);
         }
         
@@ -95,8 +93,8 @@
             }
             // sum all values
             
-            for (let i=0; i<data.rows.length; i++) {
-                const s = get_sample(i);
+            for (let i=0; i<data.num_samples(); i++) {
+                const s = data.get_sample(i);
                 const bucket_idx = int( map(s.geolocation.easting, 410335.103808801, 434653.007924495, 0, BUCKETS-1) );
                 const snp_value = s.snps[name];
                 out[bucket_idx]['total'] += 1;
@@ -117,150 +115,13 @@
             return out;
         }
         
-        // Get sample data in a convenient form
-        function get_sample(idx) {
-            const row = data.rows[idx];
-            // console.log(row);
-            
-            // alive/year data
-            const alive = {};
-            const years = [];
-            for (let year of YEARS) {
-                alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
-                if (alive[year] == 1) years.push(year);
-            }
-            years.sort();
-            
-            // SNPs
-            const snp_names = data.columns.slice(SNP_IDX[0], SNP_IDX[1] + 1);
-            // console.log(snp_names);
-            
-            const snps = {};
-            for (let key of snp_names) {
-                snps[key] = parseFloat( row.obj[key] );
-            }
-            
-            return {
-                id: row.obj.PlantID_final,
-                year_first: years[0],
-                year_last: years.at(-1),
-                years,
-                alive,
-                snps,
-                color: {
-                    red: parseFloat( row.obj.Red_final ),
-                    yellow: parseFloat( row.obj.Yellow_final ),
-                    pheno_cat: row.obj.phenoCat_final,
-                },
-                geolocation: {
-                    lat: parseFloat( row.obj.Latitude ),
-                    long: parseFloat( row.obj.Longitude ),
-                    altitude: parseFloat( row.obj.Altitude ),
-                    easting: parseFloat( row.obj.Easting ),
-                    northing: parseFloat( row.obj.Northing ),
-                }
-            };
-        }
-        
-        function make_minmax(min = -Infinity, max = Infinity) {
-            let v_min = max;
-            let v_max = min;
-            let n = 0;
-            
-            return {
-                add: function(val) {
-                    if (val < min || val > max) return;
-                    n++;
-                    if (val < v_min) v_min = val;
-                    if (val > v_max) v_max = val;
-                },
-                get: function() {
-                    return {
-                        min: v_min,
-                        max: v_max,
-                        count: n,
-                    };
-                }
-            }
-        }
-
-        // Statistics / Print range of values
-        function get_stats() {
-            function add(obj, val) {
-                if (val in obj) {
-                    obj[val] += 1;
-                } else {
-                    obj[val] = 1;
-                }
-            }
-            
-            const values_snp = {};
-            const values_red = new Set();
-            const values_yellow = new Set();
-            const values_pheno_cat = new Set();
-            
-            const range_red = make_minmax(0);
-            const range_yellow = make_minmax(0);
-            const range_lat = make_minmax();
-            const range_long = make_minmax();
-            const range_altitude = make_minmax();
-            const range_easting = make_minmax();
-            const range_northing = make_minmax();
-            
-            for (let idx=0; idx<data.rows.length; idx++) {
-                const s = get_sample(idx);
-                for (let val of Object.values(s.snps)) {
-                    add( values_snp, val );
-                }
-                
-                add( values_red, s.color.red );
-                add( values_yellow, s.color.yellow );
-                add( values_pheno_cat, s.color.pheno_cat );
-                
-                range_red.add(s.color.red);
-                range_yellow.add(s.color.yellow);
-                range_lat.add(s.geolocation.lat);
-                range_long.add(s.geolocation.long);
-                range_altitude.add(s.geolocation.altitude);
-                range_easting.add(s.geolocation.easting);
-                range_northing.add(s.geolocation.northing);
-            }
-            
-            // function sorted(arr) {
-            //     arr.sort();
-            //     return arr;
-            // }
-            
-            function sorted(obj) {
-                return Object.keys(obj).sort().reduce(
-                  (out, key) => {
-                    out[key] = obj[key];
-                    return out;
-                  },
-                  {}
-                );
-            }
-            
-            return {
-                values_snp: sorted( values_snp ),
-                values_red: sorted( values_red ),
-                values_yellow: sorted( values_yellow ),
-                values_pheno_cat: sorted(values_pheno_cat),
-                range_red: range_red.get(),
-                range_yellow: range_yellow.get(),
-                range_lat: range_lat.get(),
-                range_long: range_long.get(),
-                range_altitude: range_altitude.get(),
-                range_easting: range_easting.get(),
-                range_northing: range_northing.get(),
-            };
-        }
+       
         
         function draw_locations() {
             const g = createGraphics(width, height);
             g.noStroke();
-            for (let i=0; i<data.rows.length; i++) {
-                const s = get_sample(i);
+            for (let i=0; i<data.num_samples(); i++) {
+                const s = data.get_sample(i);
                 const x = map(s.geolocation.easting, 410335.103808801 - BORDER, 434653.007924495 + BORDER, 0, width);
                 const y = map(s.geolocation.northing, 4684727.2878592 - BORDER, 4691188.68583845 + BORDER, height, 0);
                 
@@ -297,7 +158,7 @@
                 } else if (i > 0) {
                     val = prev_val;
                 }
-                SNP_OPACITY = 250;
+                const SNP_OPACITY = 250;
                 
                 if (SNP_STYLE == 1) {
                     noStroke();
@@ -407,6 +268,8 @@
                 redraw();
             }
         }
+        
+        util.register_global(preload, setup, draw, keyPressed);
         
     </script>
 </body>
