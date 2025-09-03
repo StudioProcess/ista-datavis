@@ -1,8 +1,10 @@
 const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
 const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
 const COLORS = { "Y": "Yellow", "WO": "Weak Orange", "FO": "Full Orange", "W": "White", "WR": "Weak red", "FR": "Full red"};
+const COLOR_SNP_NAMES = ["ros_assembly_543443", "ros_assembly_715001", "s91_122561",  "s316_93292", "s316_257789", "s1187_290152"];
 let data; // CSV data
 let loadedCallback;
+let _color_snp_indices;
 
 // Default loadTable doesn't support async/await
 function loadTableAsync(filename, extension, header) {
@@ -30,8 +32,16 @@ async function load(path) {
     console.log('Loading data', path);
     data = undefined;
     data = await loadTableAsync(path, 'csv', 'header');
+    _color_snp_indices = COLOR_SNP_NAMES.map(name => {
+        return data.columns.indexOf(name);
+    });
     console.log('Loading data done');
     return data;
+}
+
+function color_snp_indices() {
+    check_loaded('color_snp_indices');
+    return _color_snp_indices;
 }
 
 function check_loaded(caller, throw_error = true) {
@@ -285,6 +295,8 @@ export default {
     YEARS,
     SNP_IDX,
     COLORS,
+    COLOR_SNP_NAMES,
+    color_snp_indices,
     load,
     loaded,
     raw,

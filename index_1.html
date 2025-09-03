@@ -30,7 +30,7 @@
         
         // Color for SNP no data
         const COL_NODATA = [40];
-        
+            
         // Color for Red value
         const COL_R = [255, 55, 140];
         
@@ -41,10 +41,14 @@
         const COL_ID = [40];
         
         // Color for Timeline markings
-        const COL_TIMELINE = [40];
+        const COL_TIMELINE = [0];
         
         // Start / end index when using "Save all" (-1 means last)
         const SAVE_ALL = [0, 1999];
+        
+        const MARK_COLOR_SNPS = true;
+        const MARK_COL = [128, 128, 100];
+        const MARK_SCALE = 0.03;
     
         // --------------------------------------------------------------------------------
         
@@ -55,7 +59,7 @@
     
         async function setup() {
             await data.load('./data/dataMartin.csv');
-            console.log(data.raw().columns);
+            // console.log(data.raw().columns);
             data.sort(DATA_SORTING);
             
             noLoop();
@@ -77,6 +81,8 @@
             noStroke();
             rectMode(CORNER);
             for ( let [idx, val] of Object.values(s.snps).entries() ) {
+                noStroke();
+                rectMode(CORNER);
                 const x = (idx % 10) * cell_w;
                 const y = Math.floor(idx / 10) * cell_h;
                 if ( val < 0) {
@@ -85,6 +91,16 @@
                     fill( ...COL[val] );
                 }
                 rect(x, y, cell_w, cell_h);
+                
+                const mark_weight = cell_w * MARK_SCALE;
+                if (MARK_COLOR_SNPS && data.color_snp_indices().includes(idx)) {
+                    strokeWeight(mark_weight);
+                    fill(...MARK_COL);
+                    rectMode(CENTER);
+                    // rect(x + cell_w/2, y + cell_w/2, cell_w/3, cell_h/3);
+                    circle(x + cell_w/2, y + cell_w/2, cell_w/8);
+                    
+                }
             }
             
             // spot with flower color
@@ -137,8 +153,8 @@
             textAlign(CENTER, CENTER);
             textSize(cell_h * 2/3);
             fill(...COL_ID);
-            stroke(0);
-            strokeWeight(2);
+            stroke(255);
+            strokeWeight(cell_w * 0.001);
             for (let [idx, ch] of s.id.split('').entries() ) {
                 let x = cell_w + idx * (cell_w * 2);
                 text(ch, x, height - cell_h/2);
