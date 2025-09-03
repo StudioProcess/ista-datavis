@@ -50,25 +50,31 @@
         
         // Colors for SNP values 0/1/2
         const COL = {
-            0: [255, 0, 0],
-            1: [0, 255, 0],
-            2: [0, 0, 255],
+            0: [255, 55, 140],
+            1: [255],
+            2: [255, 220, 30],
         };
         
         // Color for SNP no data
-        const COL_NODATA = [0, 0, 0];
+        const COL_NODATA = [40];
         
         // Color for Red value
-        const COL_R = [255, 0, 0];
+        const COL_R = [255, 55, 140];
         
         // Color for Yellow value
         const COL_Y = [255, 255, 0];
         
+        // Color for ID Label
+        const COL_ID = [40];
+        
+        // Color for Timeline markings
+        const COL_TIMELINE = [128];
+        
         // Color for border around each "QR Code"
-        const BORDER_COL = [255, 255, 255];
+        const BORDER_COL = [0, 60];
         
         // Border thickness
-        const BORDER_SCALE = 0.33;
+        const BORDER_SCALE = 0.1;
         
         // --------------------------------------------------------------------------------
         
@@ -231,7 +237,7 @@
             // timeline
             if (SHOW_TIMELINE) {
                 noStroke();
-                fill(255, 255);
+                fill(...COL_TIMELINE);
                 // blendMode(BLEND);
                 rectMode(CENTER);
                 const marker_w = cell_w * 0.33 * TIMELINE_SCALE;
@@ -254,7 +260,7 @@
                 // blendMode(BLEND);
                 textAlign(CENTER, CENTER);
                 textSize(cell_h * 2);
-                fill(255, 255);
+                fill(...COL_ID);
                 stroke(0);
                 strokeWeight(2);
                 for (let [idx, ch] of s.id.split('').entries() ) {
