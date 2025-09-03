@@ -17,7 +17,9 @@
         // X ... Save all samples consecutively
         
         // --------------------------------------------------------------------------------
-    
+        
+        const DATA_SORTING = 'location'; // id, time, location, color
+        
         // Colors for SNP values 0/1/2
         const COL = {
             0: [255, 240, 30],
@@ -53,7 +55,8 @@
     
         async function setup() {
             await data.load('./data/dataMartin.csv');
-            console.log(data.raw().columns)
+            console.log(data.raw().columns);
+            data.sort(DATA_SORTING);
             
             noLoop();
             pixelDensity(1);

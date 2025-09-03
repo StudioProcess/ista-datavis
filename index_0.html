@@ -68,7 +68,7 @@
             pixelDensity(1);
             
             await data.load('./data/dataMartin.csv');
-            orig_log(data.raw().columns);
+            orig_log(data.raw());
             
             const stats = data.get_stats();
             console.log(stats);

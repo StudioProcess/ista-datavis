@@ -1,6 +1,6 @@
 const YEARS = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]; // Years in dataset
 const SNP_IDX = [6, 106]; // Indices of the SNP markers within a data row
-const COLORS = { "Y": "Yellow", "FR": "Full red", "WO": "Weak Orange", "WR": "Weak red", "FO": "Full Orange", "W": "White" };
+const COLORS = { "Y": "Yellow", "WO": "Weak Orange", "FO": "Full Orange", "W": "White", "WR": "Weak red", "FR": "Full red"};
 let data; // CSV data
 let loadedCallback;
 
@@ -27,10 +27,10 @@ function loaded() {
 }
 
 async function load(path) {
-    console.log('loading data', path);
+    console.log('Loading data', path);
     data = undefined;
     data = await loadTableAsync(path, 'csv', 'header');
-    console.log('loading data done');
+    console.log('Loading data done');
     return data;
 }
 
@@ -54,6 +54,61 @@ function num_samples() {
 
 function snp_names() {
     return data.columns.slice( SNP_IDX[0], SNP_IDX[1] + 1 );
+}
+
+function cmp(a, b) {
+    if (a < b) return -1;
+    else if (a > b) return 1;
+    return 0;
+}
+
+function sort_by(array, pick_fn) {
+    array.sort((a, b) =>  cmp( pick_fn(a), pick_fn(b) ));
+    return array;
+}
+
+function sort_by_property(array, ...keys) {
+    function pick(array) {
+        let x = array;
+        for (let key of keys) {
+            x = x[key];
+        }
+        return x;
+    }
+    return sort_by(array, pick);
+}
+
+function sort(by = '') {
+    const keys = ['id', 'time', 'location', 'color'];
+    if (Number.isInteger(by)) {
+        by = keys[by % keys.length];
+    }
+    by = by.toLowerCase();
+    if (by == '') by = 'id';
+    console.log(`Sorting data by ${by}`);
+    
+    if (by == 'location') {
+        sort_by_property(data.rows, 'obj', 'Easting');
+    } else if (by == 'color') {
+        const color_order = Object.keys(COLORS);
+        sort_by(data.rows, x => {
+            let idx = color_order.indexOf( x.obj.phenoCat_final );
+            if (idx == -1) idx = 999;
+            return idx;
+        });
+    } else if (by == 'time') {
+        // AliveRec_2009 to AliveRec_2019 are column indices 107 to 117
+        sort_by(data.rows, x => {
+            for (let i=0; i <= 10; i++) {
+                if (x.arr[107 + i] == true) {
+                    return i;
+                }
+            }
+            return 999;
+        });
+    } else { // id
+        sort_by_property(data.rows, 'obj', 'PlantID_final');
+    }
 }
 
 // Get sample data in a convenient form
@@ -237,4 +292,5 @@ export default {
     num_samples,
     get_sample,
     get_stats,
+    sort,
 };

@@ -27,6 +27,8 @@
         
         // --------------------------------------------------------------------------------
     
+        const DATA_SORTING = 'location'; // id, time, location, color
+    
         const COUNT_X = 41;
         const COUNT_Y = 73;
         
@@ -183,6 +185,7 @@
         async function setup() {
             await data.load('./data/dataMartin.csv');
             console.log(data.raw());
+            data.sort(DATA_SORTING);
 
             createCanvas(2160, 3840, WEBGL);
             pixelDensity(1);

@@ -17,6 +17,8 @@
     
         // --------------------------------------------------------------------------------
        
+        const DATA_SORTING = 'location'; // id, time, location, color
+       
         // Number of samples horizontally
         const X_COUNT = 30;
         
@@ -87,6 +89,9 @@
     
         async function setup() {
             await data.load('./data/dataMartin.csv');
+            data.sort(DATA_SORTING);
+            console.log(data.raw());
+            
             noLoop();
             pixelDensity(1);
             createCanvas(X_COUNT * TILE_SIZE, Y_COUNT * TILE_SIZE);

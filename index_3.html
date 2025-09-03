@@ -16,6 +16,8 @@
         // S ... Save page (PNG)
         
         // --------------------------------------------------------------------------------
+        
+        const DATA_SORTING = 'location'; // id, time, location, color
     
         // Main space for SNP Markers
         const SPACE_MAIN = 1800;
@@ -68,6 +70,8 @@
     
         async function setup() {
             await data.load('./data/dataMartin.csv');
+            data.sort(DATA_SORTING);
+            
             noLoop();
             pixelDensity(1);
             createCanvas(SPACE_MAIN + SPACE_LEFT + SPACE_RIGHT, COUNT * SPACE_MAIN/101);
