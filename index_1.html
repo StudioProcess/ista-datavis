@@ -20,9 +20,10 @@
     
         // Colors for SNP values 0/1/2
         const COL = {
-            0: [255, 55, 140],
-            1: [255, 245, 240],
-            2: [255, 240, 30],
+            0: [255, 240, 30],
+            //1: [255, 148, 85], // midpoint 
+            1: [255, 255, 221],
+            2: [255, 55, 140]
         };
         
         // Color for SNP no data
@@ -58,87 +59,6 @@
             pixelDensity(1);
             createCanvas(2000, 2000); // this actually starts the draw loop
         }
-        
-        // // Get sample data in a convenient form
-        // function get_sample(idx) {
-        //     const row = data.rows[idx];
-        //     // console.log(row);
-        //     
-        //     // alive/year data
-        //     const alive = {};
-        //     const years = [];
-        //     for (let year of YEARS) {
-        //         alive[year] = parseFloat(row.obj[`AliveRec_${year}`]);
-        //         if (alive[year] == 1) years.push(year);
-        //     }
-        //     years.sort();
-        //     
-        //     // SNPs
-        //     const snp_names = [];
-        //     for (let idx = SNP_IDX[0]; idx <= SNP_IDX[1]; idx++) {
-        //         snp_names.push(data.columns[idx])
-        //     }
-        //     // console.log(snp_names);
-        //     
-        //     const snps = {};
-        //     for (let key of snp_names) {
-        //         snps[key] = parseFloat( row.obj[key] );
-        //     }
-        //     
-        //     return {
-        //         id: row.obj.PlantID_final,
-        //         year_first: years[0],
-        //         year_last: years.at(-1),
-        //         years,
-        //         alive,
-        //         snps,
-        //         color: {
-        //             red: parseFloat( row.obj.Red_final ),
-        //             yellow: parseFloat( row.obj.Yellow_final ),
-        //             pheno_cat: row.obj.phenoCat_final,
-        //         },
-        //     };
-        // }
-// 
-        // // Statistics / Print range of values
-        // function get_stats() {
-        //     const values_snp = new Set();
-        //     const values_red = new Set();
-        //     const values_yellow = new Set();
-        //     const values_pheno_cat = new Set();
-        //     const range_red = [ 9999, 0 ];
-        //     const range_yellow = [ 9999, 0 ];
-        //     
-        //     for (let idx=0; idx<data.rows.length; idx++) {
-        //         const s = get_sample(idx);
-        //         for (let val of Object.values(s.snps)) {
-        //             values_snp.add(val);
-        //         }
-        //         
-        //         values_red.add( s.color.red );
-        //         values_yellow.add( s.color.yellow );
-        //         values_pheno_cat.add( s.color.pheno_cat );
-        //         
-        //         if (s.color.red < range_red[0]) range_red[0] = s.color.red;
-        //         if (s.color.red > range_red[1]) range_red[1] = s.color.red;
-        //         if (s.color.yellow < range_yellow[0]) range_yellow[0] = s.color.yellow;
-        //         if (s.color.yellow > range_yellow[1]) range_yellow[1] = s.color.yellow;
-        //     }
-        //     
-        //     function sorted(arr) {
-        //         arr.sort();
-        //         return arr;
-        //     }
-        //     
-        //     return {
-        //         values_snp: sorted( Array.from(values_snp) ),
-        //         values_red: sorted( Array.from(values_red) ),
-        //         values_yellow: sorted( Array.from(values_yellow) ),
-        //         values_pheno_cat: sorted(Array.from(values_pheno_cat)),
-        //         range_red,
-        //         range_yellow,
-        //     };
-        // }
         
         // Draw single sample
         function draw_sample(idx) {
@@ -223,6 +143,7 @@
         }
         
         async function draw() {
+            await data.loaded();
             background(255);
             
             // const stats = data.get_stats();

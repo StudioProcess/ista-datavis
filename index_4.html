@@ -197,7 +197,8 @@
             rebuildMesh();
         }
         
-        function draw() {
+        async function draw() {
+            await data.loaded();
             background(255);
             
             orbitControl(0, 0, 1);
