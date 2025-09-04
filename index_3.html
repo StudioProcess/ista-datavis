@@ -18,6 +18,9 @@
         // --------------------------------------------------------------------------------
         
         const DATA_SORTING = 'location'; // id, time, location, color
+        const SNP_SORTING = 0;
+        
+        const SNPS_COUNT = 100; // How many SNPs to show
     
         // Main space for SNP Markers
         const SPACE_MAIN = 1800;
@@ -71,6 +74,7 @@
         async function setup() {
             await data.load('./data/dataMartin.csv');
             data.sort(DATA_SORTING);
+            data.sort_snps(SNP_SORTING);
             
             noLoop();
             pixelDensity(1);
@@ -83,13 +87,13 @@
             let s = data.get_sample(idx);
             // console.log(s);
             
-            const cell_w = SPACE_MAIN / 101; // 101 SNP markers in dataset
-            const cell_h = cell_w;
+            const cell_w = SPACE_MAIN / SNPS_COUNT; 
+            const cell_h = height / COUNT;
             
             // blendMode(BLEND);
             noStroke();
             rectMode(CORNER);
-            for ( let [idx, val] of Object.values(s.snps).entries() ) {
+            for ( let [idx, val] of Object.values(s.snps).slice(0, SNPS_COUNT).entries() ) {
                 const x = idx * cell_w;
                 const y = 0
                 if ( val < 0) {
@@ -192,7 +196,8 @@
             }
         }
         
-        function draw() {
+        async function draw() {
+            await data.loaded();
             background(0);
             draw_fabric(COUNT, sample_offset);
         }
@@ -215,6 +220,11 @@
             redraw();
         }
         
+        function set_snp_sorting(by) {
+            data.sort_snps(by);
+            redraw();
+        }
+        
         function keyPressed(e) {
             if (e.key == 'ArrowLeft') {
                 scroll_fabric(-COUNT);
@@ -222,6 +232,8 @@
                 scroll_fabric(COUNT);
             } else if (e.key == 's') {
                 saveFrame(sketch_ts);
+            } if (e.key >= '0' && e.key <= '4') {
+                set_snp_sorting(parseInt(e.key));
             }
         }
         

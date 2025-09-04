@@ -184,7 +184,8 @@
             }
         }
         
-        function draw() {
+        async function draw() {
+            await data.loaded();
             background(255);
             
             if (show_map) {

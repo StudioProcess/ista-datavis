@@ -4,7 +4,9 @@ const COLORS = { "Y": "Yellow", "WO": "Weak Orange", "FO": "Full Orange", "W": "
 const COLOR_SNP_NAMES = ["ros_assembly_543443", "ros_assembly_715001", "s91_122561",  "s316_93292", "s316_257789", "s1187_290152"];
 let data; // CSV data
 let loadedCallback;
-let _color_snp_indices;
+let _original_snp_names; // All SNP names in orignal order
+let _color_snp_indices; // Indices of color SNP within SNPs (NOT withing all columns)
+let _sorted_snp_names;
 
 // Default loadTable doesn't support async/await
 function loadTableAsync(filename, extension, header) {
@@ -32,8 +34,10 @@ async function load(path) {
     console.log('Loading data', path);
     data = undefined;
     data = await loadTableAsync(path, 'csv', 'header');
+    _original_snp_names = snp_names();
+    _sorted_snp_names = _original_snp_names;
     _color_snp_indices = COLOR_SNP_NAMES.map(name => {
-        return data.columns.indexOf(name) - SNP_IDX[0]; // Important: Adjust idx
+        return _original_snp_names.indexOf(name);
     });
     _color_snp_indices.sort();
     console.log('Loading data done');
@@ -96,7 +100,7 @@ function sort(by = '') {
     }
     by = by.toLowerCase();
     if (by == '') by = 'id';
-    console.log(`Sorting data by ${by}`);
+    console.log('Sorting data by', by);
     
     if (by == 'location') {
         sort_by_property(data.rows, 'obj', 'Easting');
@@ -122,7 +126,7 @@ function sort(by = '') {
     }
 }
 
-function sort_snps(sample, by = '') {
+function sort_snps(by = '') {
     check_loaded('sort_snps');
     
     const options = [ 'default', 'color_start', 'color_end', 'color_middle', 'alpha'];
@@ -130,11 +134,10 @@ function sort_snps(sample, by = '') {
         by = options[ by % options.length ];
     }
     if (by == '') by = 'default';
-    console.log('SNP sorting', by);
+    console.log('SNPs sorted by', by);
     
-    let keys = Object.keys(sample._original_snps).slice(0, 100);
+    let keys = _original_snp_names.slice(0, 100);
     keys = keys.reduce( (acc, x, idx) => {
-        // console.log(acc, x, idx, _color_snp_indices);
         if (!COLOR_SNP_NAMES.includes(x)) {
             acc.push(x);
         }
@@ -148,17 +151,13 @@ function sort_snps(sample, by = '') {
     } else if (by == 'color_middle') {
         keys.splice(Math.floor(keys.length / 2), 0, ...COLOR_SNP_NAMES);
     } else if (by == 'alpha') { // sort keys alphabetically
-        keys = Object.keys(sample._original_snps).sort();
+        keys = _original_snp_names.sort();
     } else { // default - keep as is
-        keys = Object.keys(sample._original_snps);
+        keys = _original_snp_names;
     }
     
-    // create output object
-    const snps = {};
-    for (let key of keys) {
-        snps[key] = sample._original_snps[key];
-    }
-    sample.snps = snps;
+    // set sorting
+    _sorted_snp_names = keys;
     
     // Update color_snp_indices for new sorting
     _color_snp_indices = COLOR_SNP_NAMES.map(name => {
@@ -183,7 +182,7 @@ function get_sample(idx) {
     
     // SNPs
     const snps = {};
-    for (let key of snp_names()) {
+    for (let key of _sorted_snp_names) {
         snps[key] = parseFloat( row.obj[key] );
     }
     
@@ -193,7 +192,6 @@ function get_sample(idx) {
         year_last: years.at(-1),
         years,
         alive,
-        _original_snps: snps,
         snps,
         color: {
             red: parseFloat( row.obj.Red_final ),

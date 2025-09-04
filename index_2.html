@@ -18,6 +18,7 @@
         // --------------------------------------------------------------------------------
        
         const DATA_SORTING = 'location'; // id, time, location, color
+        const SNP_SORTING = 0;
        
         // Number of samples horizontally
         const X_COUNT = 30;
@@ -90,6 +91,7 @@
         async function setup() {
             await data.load('./data/dataMartin.csv');
             data.sort(DATA_SORTING);
+            data.sort_snps(SNP_SORTING);
             console.log(data.raw());
             
             noLoop();
@@ -222,7 +224,8 @@
             }
         }
         
-        function draw() {
+        async function draw() {
+            await data.loaded();
             background(0);
             draw_mosaic(X_COUNT, Y_COUNT, sample_offset);
         }
@@ -245,6 +248,11 @@
             redraw();
         }
         
+        function set_snp_sorting(by) {
+            data.sort_snps(by);
+            redraw();
+        }
+        
         function keyPressed(e) {
             if (e.key == 'ArrowLeft') {
                 scroll_mosaic(-X_COUNT * Y_COUNT);
@@ -252,6 +260,8 @@
                 scroll_mosaic(X_COUNT * Y_COUNT);
             } else if (e.key == 's') {
                 saveFrame(sketch_ts);
+            } if (e.key >= '0' && e.key <= '4') {
+                set_snp_sorting(parseInt(e.key));
             }
         }
         

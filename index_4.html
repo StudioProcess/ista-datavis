@@ -183,11 +183,12 @@
         }
         
         async function setup() {
+            createCanvas(2160, 3840, WEBGL);
+            
             await data.load('./data/dataMartin.csv');
             console.log(data.raw());
             data.sort(DATA_SORTING);
 
-            createCanvas(2160, 3840, WEBGL);
             pixelDensity(1);
             ortho();
             strokeWeight(0.5);
