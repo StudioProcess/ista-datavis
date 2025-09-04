@@ -20,7 +20,7 @@
         const DATA_SORTING = 'location'; // id, time, location, color
         const SNP_SORTING = 0;
         
-        const SNPS_COUNT = 100; // How many SNPs to show
+        const SNPS_COUNT = 5; // How many SNPs to show
     
         // Main space for SNP Markers
         const SPACE_MAIN = 1800;
@@ -95,7 +95,7 @@
             rectMode(CORNER);
             for ( let [idx, val] of Object.values(s.snps).slice(0, SNPS_COUNT).entries() ) {
                 const x = idx * cell_w;
-                const y = 0
+                const y = 0;
                 if ( val < 0) {
                     fill( ...COL_NODATA );
                 } else {
@@ -138,21 +138,22 @@
             
             // timeline
             if (SHOW_TIMELINE) {
-                fill(255, 255);
+                fill(40);
                 // blendMode(BLEND);
                 rectMode(CENTER);
-                const marker_w = cell_w * 0.33 * TIMELINE_SCALE;
-                const marker_h = cell_h * 0.33 * TIMELINE_SCALE;
+                const marker_w = cell_h * 0.33 * TIMELINE_SCALE;
+                // const marker_h = cell_w; // happy accident!
+                const marker_h = marker_w;
                 push();
                 translate(SPACE_LEFT, 0);
                 for (let year of s.years) {
-                    let x = map(year, 2009, 2019, 0, width);
+                    let x = map(year, 2009, 2019, 0, SPACE_MAIN);
                     rect(x, cell_h - marker_h / 2, marker_w, marker_h);
                 }
                 // connector from first to last year
                 if (s.year_first != s.year_last) {
-                    let x_start = map(s.year_first, 2009, 2019, 0, width);
-                    let x_end   = map(s.year_last, 2009, 2019, 0, width);
+                    let x_start = map(s.year_first, 2009, 2019, 0, SPACE_MAIN);
+                    let x_end   = map(s.year_last, 2009, 2019, 0, SPACE_MAIN);
                     rectMode(CORNER);
                     rect(x_start + marker_w/2, cell_h - marker_h/3, x_end - x_start - marker_w, marker_h/3);
                 }
