@@ -19,6 +19,7 @@
         // --------------------------------------------------------------------------------
         
         const DATA_SORTING = 'location'; // id, time, location, color
+        let SNP_SORTING = 1;
         
         // Colors for SNP values 0/1/2
         const COL = {
@@ -72,7 +73,7 @@
             console.log("SAMPLE #" + sample_idx);
             
             let s = data.get_sample(idx);
-            console.log(s);
+            data.sort_snps(s, SNP_SORTING);
             
             const cell_w = width / 10;
             const cell_h = height / 10;
@@ -83,7 +84,7 @@
             for ( let [idx, val] of Object.values(s.snps).entries() ) {
                 noStroke();
                 rectMode(CORNER);
-                const x = (idx % 10) * cell_w;
+                const x = (idx % 10) * cell_w;  
                 const y = Math.floor(idx / 10) * cell_h;
                 if ( val < 0) {
                     fill( ...COL_NODATA );
@@ -162,6 +163,7 @@
         }
         
         async function draw() {
+            console.log(frameCount);
             await data.loaded();
             background(255);
             
@@ -225,6 +227,9 @@
                 saveSample();
             } else if (e.key == 'x') {
                 record(...SAVE_ALL);
+            } if (e.key >= '0' && e.key <= '4') {
+                SNP_SORTING = parseInt(e.key);
+                redraw();
             }
         }
         

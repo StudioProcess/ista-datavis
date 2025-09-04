@@ -33,8 +33,9 @@ async function load(path) {
     data = undefined;
     data = await loadTableAsync(path, 'csv', 'header');
     _color_snp_indices = COLOR_SNP_NAMES.map(name => {
-        return data.columns.indexOf(name);
+        return data.columns.indexOf(name) - SNP_IDX[0]; // Important: Adjust idx
     });
+    _color_snp_indices.sort();
     console.log('Loading data done');
     return data;
 }
@@ -121,6 +122,50 @@ function sort(by = '') {
     }
 }
 
+function sort_snps(sample, by = '') {
+    check_loaded('sort_snps');
+    
+    const options = [ 'default', 'color_start', 'color_end', 'color_middle', 'alpha'];
+    if (Number.isInteger(by)) {
+        by = options[ by % options.length ];
+    }
+    if (by == '') by = 'default';
+    console.log('SNP sorting', by);
+    
+    let keys = Object.keys(sample._original_snps).slice(0, 100);
+    keys = keys.reduce( (acc, x, idx) => {
+        // console.log(acc, x, idx, _color_snp_indices);
+        if (!COLOR_SNP_NAMES.includes(x)) {
+            acc.push(x);
+        }
+        return acc;
+    }, []);
+    
+    if (by == 'color_start') { // color snps to front
+        keys.splice(0, 0, ...COLOR_SNP_NAMES);
+    } else if (by == 'color_end') {
+        keys.splice(keys.length, 0, ...COLOR_SNP_NAMES);
+    } else if (by == 'color_middle') {
+        keys.splice(Math.floor(keys.length / 2), 0, ...COLOR_SNP_NAMES);
+    } else if (by == 'alpha') { // sort keys alphabetically
+        keys = Object.keys(sample._original_snps).sort();
+    } else { // default - keep as is
+        keys = Object.keys(sample._original_snps);
+    }
+    
+    // create output object
+    const snps = {};
+    for (let key of keys) {
+        snps[key] = sample._original_snps[key];
+    }
+    sample.snps = snps;
+    
+    // Update color_snp_indices for new sorting
+    _color_snp_indices = COLOR_SNP_NAMES.map(name => {
+        return keys.indexOf(name);
+    });
+}
+
 // Get sample data in a convenient form
 function get_sample(idx) {
     check_loaded('get_sample');
@@ -148,6 +193,7 @@ function get_sample(idx) {
         year_last: years.at(-1),
         years,
         alive,
+        _original_snps: snps,
         snps,
         color: {
             red: parseFloat( row.obj.Red_final ),
@@ -305,4 +351,5 @@ export default {
     get_sample,
     get_stats,
     sort,
+    sort_snps,
 };
