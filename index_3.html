@@ -18,9 +18,9 @@
         // --------------------------------------------------------------------------------
         
         const DATA_SORTING = 'location'; // id, time, location, color
-        const SNP_SORTING = 0;
+        const SNP_SORTING = 0; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
-        const SNPS_COUNT = 5; // How many SNPs to show
+        const SNP_COUNT = 100; // How many SNPs to show
     
         // Main space for SNP Markers
         const SPACE_MAIN = 1800;
@@ -71,10 +71,13 @@
         let start_idx, end_idx;
         const sketch_ts = util.timestamp();
         
+        let snp_sorting = SNP_SORTING;
+        let snp_count = SNP_COUNT;
+        
         async function preload() {
             await util.preload( data.load('./data/dataMartin.csv') );
             data.sort(DATA_SORTING);
-            data.sort_snps(SNP_SORTING);
+            data.sort_snps(snp_sorting, snp_count);
         }
     
         async function setup() {
@@ -89,13 +92,13 @@
             let s = data.get_sample(idx);
             // console.log(s);
             
-            const cell_w = SPACE_MAIN / SNPS_COUNT; 
+            const cell_w = SPACE_MAIN / snp_count; 
             const cell_h = height / COUNT;
             
             // blendMode(BLEND);
             noStroke();
             rectMode(CORNER);
-            for ( let [idx, val] of Object.values(s.snps).slice(0, SNPS_COUNT).entries() ) {
+            for ( let [idx, val] of Object.values(s.snps).slice(0, snp_count).entries() ) {
                 const x = idx * cell_w;
                 const y = 0;
                 if ( val < 0) {
@@ -222,8 +225,12 @@
             redraw();
         }
         
-        function set_snp_sorting(by) {
-            data.sort_snps(by);
+        function set_snp_sorting(by, limit) {
+            if (by == null || by == undefined) by = snp_sorting;
+            if (limit == null || limit == undefined) limit = snp_count;
+            snp_sorting = by;
+            snp_count = limit;
+            data.sort_snps(snp_sorting, snp_count);
             redraw();
         }
         
@@ -234,8 +241,14 @@
                 scroll_fabric(COUNT);
             } else if (e.key == 's') {
                 saveFrame(sketch_ts);
-            } if (e.key >= '0' && e.key <= '4') {
-                set_snp_sorting(parseInt(e.key));
+            } else if (e.key >= '1' && e.key <= '5') {
+                set_snp_sorting( parseInt(e.key) - 1 );
+            } else if ( (e.key >= '6' && e.key <= '9') || e.key == '0' ) {
+                let idx = parseInt(e.key);
+                if (idx == 0) idx = 4;
+                else idx -= 6;
+                const options = [ 6, 12, 25, 50, 100 ];
+                set_snp_sorting( null, options[idx] );
             }
         }
         

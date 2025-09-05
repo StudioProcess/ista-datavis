@@ -18,7 +18,7 @@
         // --------------------------------------------------------------------------------
        
         const DATA_SORTING = 'location'; // id, time, location, color
-        const SNP_SORTING = 0;
+        const SNP_SORTING = 0; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
         const SNP_COUNT = 100; // How many SNPs to show
        
@@ -90,13 +90,16 @@
         let start_idx, end_idx;
         const sketch_ts = util.timestamp();
         
-        const grid = util.rectangle(SNP_COUNT);
+        let snp_count = SNP_COUNT;
+        let snp_sorting = SNP_SORTING;
+        
+        let grid = util.rectangle(snp_count);
         console.log('grid', grid);
         
         async function preload() {
             await util.preload( data.load('./data/dataMartin.csv') );
             data.sort(DATA_SORTING);
-            data.sort_snps(SNP_SORTING);
+            data.sort_snps(snp_sorting, snp_count);
             console.log(data.raw());
         }
     
@@ -255,8 +258,16 @@
             redraw();
         }
         
-        function set_snp_sorting(by) {
-            data.sort_snps(by);
+        function set_snp_sorting(by, limit) {
+            if (by == null || by == undefined) by = snp_sorting;
+            if (limit == null || limit == undefined) limit = snp_count;
+            if (limit != snp_count) {
+                grid = util.rectangle(limit);
+                console.log('grid', grid);
+            }
+            snp_sorting = by;
+            snp_count = limit;
+            data.sort_snps(snp_sorting, snp_count);
             redraw();
         }
         
@@ -267,8 +278,14 @@
                 scroll_mosaic(X_COUNT * Y_COUNT);
             } else if (e.key == 's') {
                 saveFrame(sketch_ts);
-            } if (e.key >= '0' && e.key <= '4') {
-                set_snp_sorting(parseInt(e.key));
+            } else if (e.key >= '1' && e.key <= '5') {
+                set_snp_sorting (parseInt(e.key) - 1, null );
+            } else if ( (e.key >= '6' && e.key <= '9') || e.key == '0' ) {
+                let idx = parseInt(e.key);
+                if (idx == 0) idx = 4;
+                else idx -= 6;
+                const options = [ 6, 12, 25, 50, 100 ];
+                set_snp_sorting( null, options[idx] );
             }
         }
         

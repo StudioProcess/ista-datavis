@@ -19,7 +19,7 @@
         // --------------------------------------------------------------------------------
         
         const DATA_SORTING = 'location'; // id, time, location, color
-        const SNP_SORTING = 1;
+        const SNP_SORTING = 1; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
         const SNP_COUNT = 100; // How many SNPs to show
         
@@ -59,15 +59,17 @@
         import util from './util.mjs';
         
         let sample_idx = 0; // current sample index
+        let snp_sorting = SNP_SORTING;
+        let snp_count = SNP_COUNT;
         
-        const grid = util.rectangle(SNP_COUNT);
+        let grid = util.rectangle(snp_count);
         console.log('grid', grid);
     
         async function preload() {
             await util.preload( data.load('./data/dataMartin.csv') );
             // console.log(data.raw().columns);
             data.sort(DATA_SORTING);
-            data.sort_snps(SNP_SORTING);
+            data.sort_snps(SNP_SORTING, snp_count);
         }
     
         async function setup() {
@@ -90,7 +92,7 @@
             blendMode(BLEND);
             noStroke();
             rectMode(CORNER);
-            for ( let [idx, val] of Object.values(s.snps).slice(0, SNP_COUNT).entries() ) {
+            for ( let [idx, val] of Object.values(s.snps).slice(0, snp_count).entries() ) {
                 noStroke();
                 rectMode(CORNER);
                 const x = (idx % grid[0]) * cell_w;  
@@ -225,8 +227,16 @@
             saveloop();
         }
         
-        function set_snp_sorting(by) {
-            data.sort_snps(by);
+        function set_snp_sorting(by, limit) {
+            if (by == null || by == undefined) by = snp_sorting;
+            if (limit == null || limit == undefined) limit = snp_count;
+            if (limit != snp_count) {
+                grid = util.rectangle(limit);
+                console.log('grid', grid);
+            }
+            snp_sorting = by;
+            snp_count = limit;
+            data.sort_snps(snp_sorting, snp_count);
             redraw();
         }
         
@@ -239,8 +249,14 @@
                 saveSample();
             } else if (e.key == 'x') {
                 record(...SAVE_ALL);
-            } if (e.key >= '0' && e.key <= '4') {
-                set_snp_sorting(parseInt(e.key));
+            } else if (e.key >= '1' && e.key <= '5') {
+                set_snp_sorting( parseInt(e.key) - 1, null );
+            } else if ( (e.key >= '6' && e.key <= '9') || e.key == '0' ) {
+                let idx = parseInt(e.key);
+                if (idx == 0) idx = 4;
+                else idx -= 6;
+                const options = [ 6, 12, 25, 50, 100 ];
+                set_snp_sorting( null, options[idx] );
             }
         }
         

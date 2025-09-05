@@ -126,23 +126,28 @@ function sort(by = '') {
     }
 }
 
-function sort_snps(by = '') {
+function sort_snps(by = '', limit = 0) {
     check_loaded('sort_snps');
     
-    const options = [ 'default', 'color_start', 'color_end', 'color_middle', 'alpha'];
+    const options = [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
     if (Number.isInteger(by)) {
         by = options[ by % options.length ];
     }
     if (by == '') by = 'default';
-    console.log('SNPs sorted by', by);
+    if (limit <= 0) { 
+        limit = _original_snp_names.length;
+    }
+    console.log('SNPs sorted by', by, 'limit', limit);
     
-    let keys = _original_snp_names.slice(0, 100);
-    keys = keys.reduce( (acc, x, idx) => {
+    // all non-color snps
+    let keys = _original_snp_names.reduce( (acc, x, idx) => {
         if (!COLOR_SNP_NAMES.includes(x)) {
             acc.push(x);
         }
         return acc;
     }, []);
+    limit = Math.max(0, limit - COLOR_SNP_NAMES.length);
+    keys = keys.slice(0, limit);
     
     if (by == 'color_start') { // color snps to front
         keys.splice(0, 0, ...COLOR_SNP_NAMES);
