@@ -64,7 +64,6 @@
             noise_texture = loadImage('./images/1024_LDR_RGBA_0.png');
             
             await util.preload( data.load('./data/dataMartin.csv') );
-            data.sort(DATA_SORTING);
             console.log(data.raw());
         }
         
@@ -187,6 +186,8 @@
         }
         
         async function setup() {
+            data.sort(DATA_SORTING);
+            
             createCanvas(2160, 3840, WEBGL);
 
             pixelDensity(1);

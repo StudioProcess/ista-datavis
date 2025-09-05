@@ -129,36 +129,41 @@ function sort(by = '') {
 function sort_snps(by = '', limit = 0) {
     check_loaded('sort_snps');
     
-    const options = [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
+    const options = [ 'default', 'color_start', 'color_middle', 'color_end', 'alnum' ];
     if (Number.isInteger(by)) {
         by = options[ by % options.length ];
     }
     if (by == '') by = 'default';
-    if (limit <= 0) { 
+    if (limit <= 0) {
         limit = _original_snp_names.length;
     }
     console.log('SNPs sorted by', by, 'limit', limit);
     
     // all non-color snps
-    let keys = _original_snp_names.reduce( (acc, x, idx) => {
+    let non_color_snps = _original_snp_names.reduce( (acc, x, idx) => {
         if (!COLOR_SNP_NAMES.includes(x)) {
             acc.push(x);
         }
         return acc;
     }, []);
-    limit = Math.max(0, limit - COLOR_SNP_NAMES.length);
-    keys = keys.slice(0, limit);
+    let limit_minus_color_snps = Math.max(0, limit - COLOR_SNP_NAMES.length);
+    non_color_snps = non_color_snps.slice(0, limit_minus_color_snps);
     
+    // all snps
+    let all_snps = _original_snp_names.slice(0, limit);
+    
+    // sorting options
+    let keys = non_color_snps;
     if (by == 'color_start') { // color snps to front
         keys.splice(0, 0, ...COLOR_SNP_NAMES);
     } else if (by == 'color_end') {
         keys.splice(keys.length, 0, ...COLOR_SNP_NAMES);
     } else if (by == 'color_middle') {
         keys.splice(Math.floor(keys.length / 2), 0, ...COLOR_SNP_NAMES);
-    } else if (by == 'alpha') { // sort keys alphabetically
-        keys = _original_snp_names.sort();
-    } else { // default - keep as is
-        keys = _original_snp_names;
+    } else if (by == 'alnum') { // sort keys alphabetically
+        keys = all_snps.sort();
+    } else { // default
+        keys = all_snps;
     }
     
     // set sorting

@@ -76,11 +76,12 @@
         
         async function preload() {
             await util.preload( data.load('./data/dataMartin.csv') );
-            data.sort(DATA_SORTING);
-            data.sort_snps(snp_sorting, snp_count);
         }
     
         async function setup() {
+            data.sort(DATA_SORTING);
+            data.sort_snps(snp_sorting, snp_count);
+            
             noLoop();
             pixelDensity(1);
             createCanvas(SPACE_MAIN + SPACE_LEFT + SPACE_RIGHT, COUNT * SPACE_MAIN/101);
@@ -242,7 +243,7 @@
             } else if (e.key == 's') {
                 saveFrame(sketch_ts);
             } else if (e.key >= '1' && e.key <= '5') {
-                set_snp_sorting( parseInt(e.key) - 1 );
+                set_snp_sorting( parseInt(e.key) );
             } else if ( (e.key >= '6' && e.key <= '9') || e.key == '0' ) {
                 let idx = parseInt(e.key);
                 if (idx == 0) idx = 4;

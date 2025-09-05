@@ -19,7 +19,7 @@
         // --------------------------------------------------------------------------------
         
         const DATA_SORTING = 'location'; // id, time, location, color
-        const SNP_SORTING = 1; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
+        const SNP_SORTING = 0; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
         const SNP_COUNT = 100; // How many SNPs to show
         
@@ -71,11 +71,12 @@
         async function preload() {
             await util.preload( data.load('./data/dataMartin.csv') );
             // console.log(data.raw().columns);
-            data.sort(DATA_SORTING);
-            data.sort_snps(SNP_SORTING, snp_count);
         }
     
         async function setup() {
+            data.sort(DATA_SORTING);
+            data.sort_snps(SNP_SORTING, snp_count);
+            
             noLoop();
             pixelDensity(1);
             createCanvas(2000, 2000); // this actually starts the draw loop
