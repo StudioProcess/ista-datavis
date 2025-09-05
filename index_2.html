@@ -102,6 +102,9 @@
         }
     
         async function setup() {
+            let font = await util.load_font('./fonts/soehne-mono-leicht.ttf');
+            textFont(font);
+            
             data.sort(DATA_SORTING);
             data.sort_snps(snp_sorting, snp_count);
             

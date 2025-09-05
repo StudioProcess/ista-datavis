@@ -99,10 +99,22 @@ async function preload(promise) {
     if (is_preload) self._incrementPreload();
     const result = await promise;
     if (is_preload) self._decrementPreload();
-    return promise;
+    return result;
+}
+
+function load_font(path, fallback = 'Helvetica') {
+    return new Promise(resolve => {
+        loadFont(path, function(f) {
+            resolve(f);
+        }, function() {
+            console.warn(`Failed to load font; Fallback to ${fallback}`);
+            resolve(fallback);
+        });
+    });
 }
 
 export default {
+    load_font,
     preload,
     register_global,
     timestamp,

@@ -72,6 +72,9 @@
         }
         
         async function setup() {
+            let font = await util.load_font('./fonts/soehne-mono-buch.ttf');
+            textFont(font);
+            
             snp_names = data.snp_names();
             console.log(snp_names);
             
@@ -204,7 +207,7 @@
                 textAlign(CENTER, BOTTOM);
                 textSize(16);
                 noStroke();
-                fill(255);
+                fill(40);
                 text(snp_name, width/2, height-10);
             }
             
