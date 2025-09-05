@@ -52,6 +52,8 @@
         const MARK_COLOR_SNPS = true;
         const MARK_COL = [128, 128, 100];
         const MARK_SCALE = 0.03;
+        
+        const SPOT_STYLE = 1; // 0 .. Half circles, 1 .. Concentric circles
     
         // --------------------------------------------------------------------------------
         
@@ -118,29 +120,43 @@
             // spot with flower color
             const spot_w = base * 2 * 2/3;
             const spot_h = spot_w;
+            
+            
             fill(255);
             // stroke(0);
             // strokeWeight(1);
-            ellipse(width/2, height/2, spot_w, spot_h);
             noStroke();
-            
-            // arc left (red)
-            if (s.color.red < 0) {
-                fill(0);
-            } else {
-                let alpha = map(s.color.red, 0, 5, 0, 255);
-                fill(...COL_R, alpha);
+            ellipse(width/2, height/2, spot_w, spot_h);
+            const col_red = s.color.red < 0 ? [0] : [ ...COL_R, map(s.color.red, 0, 5, 0, 255) ];
+            const col_yellow = s.color.yellow < 0 ? [0] : [ ...COL_Y, map(s.color.yellow, 0, 5, 0, 255) ];
+
+            if (SPOT_STYLE == 1) {
+                let outer_color;
+                let inner_color;
+                if (s.color.red >= s.color.yellow) {
+                    outer_color = col_red;
+                    inner_color = col_yellow;
+                } else {
+                    outer_color = col_yellow;
+                    inner_color = col_red;
+                }
+                // outer
+                fill(...outer_color);
+                ellipse(width/2, height/2, spot_w, spot_h);
+                // inner
+                fill(255);
+                ellipse(width/2, height/2, spot_w/2, spot_h/2);
+                fill(...inner_color);
+                ellipse(width/2, height/2, spot_w/2, spot_h/2);
+           } else {
+                // arc left (red)
+                fill(col_red);
+                arc(width/2, height/2, spot_w, spot_h, HALF_PI, HALF_PI+PI);
+                
+                // arc right (yellow)
+                fill(col_yellow);
+                arc(width/2, height/2, spot_w, spot_h, HALF_PI+PI, HALF_PI+TWO_PI);
             }
-            arc(width/2, height/2, spot_w, spot_h, HALF_PI, HALF_PI+PI);
-            
-            // arc right (yellow)
-            if (s.color.yellow < 0) {
-                fill(0);
-            } else {
-                let alpha = map(s.color.yellow, 0, 5, 0, 255);
-                fill(...COL_Y, alpha);
-            }
-            arc(width/2, height/2, spot_w, spot_h, HALF_PI+PI, HALF_PI+TWO_PI);
             
             // timeline
             fill(...COL_TIMELINE);
