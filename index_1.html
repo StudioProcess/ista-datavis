@@ -63,12 +63,14 @@
         const grid = util.rectangle(SNP_COUNT);
         console.log('grid', grid);
     
-        async function setup() {
-            await data.load('./data/dataMartin.csv');
+        async function preload() {
+            await util.preload( data.load('./data/dataMartin.csv') );
             // console.log(data.raw().columns);
             data.sort(DATA_SORTING);
             data.sort_snps(SNP_SORTING);
-            
+        }
+    
+        async function setup() {
             noLoop();
             pixelDensity(1);
             createCanvas(2000, 2000); // this actually starts the draw loop
@@ -170,7 +172,6 @@
         }
         
         async function draw() {
-            await data.loaded();
             background(255);
             
             // const stats = data.get_stats();
@@ -243,7 +244,7 @@
             }
         }
         
-        util.register_global(setup, draw, keyPressed);
+        util.register_global(preload, setup, draw, keyPressed);
         
     </script>
 </body>

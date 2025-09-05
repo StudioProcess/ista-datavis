@@ -64,10 +64,14 @@
         let show_snps = false;
         let view_mode = 0;
         
-        async function setup() {
+        async function preload() {
             map_image = await loadImage('./images/hybrid_zone_map_red.png');
-            await data.load('./data/dataMartin.csv');
+            
+            await util.preload( data.load('./data/dataMartin.csv') );
             console.log(data.raw());
+        }
+        
+        async function setup() {
             snp_names = data.snp_names();
             console.log(snp_names);
             
@@ -269,7 +273,7 @@
             }
         }
         
-        util.register_global(setup, draw, keyPressed);
+        util.register_global(preload, setup, draw, keyPressed);
         
     </script>
 </body>

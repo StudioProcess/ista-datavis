@@ -70,12 +70,14 @@
         let sample_offset = 0;
         let start_idx, end_idx;
         const sketch_ts = util.timestamp();
-    
-        async function setup() {
-            await data.load('./data/dataMartin.csv');
+        
+        async function preload() {
+            await util.preload( data.load('./data/dataMartin.csv') );
             data.sort(DATA_SORTING);
             data.sort_snps(SNP_SORTING);
-            
+        }
+    
+        async function setup() {
             noLoop();
             pixelDensity(1);
             createCanvas(SPACE_MAIN + SPACE_LEFT + SPACE_RIGHT, COUNT * SPACE_MAIN/101);
@@ -198,7 +200,6 @@
         }
         
         async function draw() {
-            await data.loaded();
             background(0);
             draw_fabric(COUNT, sample_offset);
         }
@@ -238,7 +239,7 @@
             }
         }
         
-        util.register_global(setup, draw, keyPressed);
+        util.register_global(preload, setup, draw, keyPressed);
         
     </script>
 </body>

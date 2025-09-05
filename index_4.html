@@ -59,9 +59,13 @@
         let dither_strength = 0.25;
         let show_mesh = false;
         
-        function preload() {
+        async function preload() {
             my_shader = loadShader('./shaders/dither.vert.glsl', './shaders/dither.frag.glsl');
             noise_texture = loadImage('./images/1024_LDR_RGBA_0.png');
+            
+            await util.preload( data.load('./data/dataMartin.csv') );
+            data.sort(DATA_SORTING);
+            console.log(data.raw());
         }
         
         const COLOR_0 = '#ffd0d4';
@@ -184,10 +188,6 @@
         
         async function setup() {
             createCanvas(2160, 3840, WEBGL);
-            
-            await data.load('./data/dataMartin.csv');
-            console.log(data.raw());
-            data.sort(DATA_SORTING);
 
             pixelDensity(1);
             ortho();
@@ -202,7 +202,6 @@
         }
         
         async function draw() {
-            await data.loaded();
             background(255);
             
             orbitControl(0, 0, 1);

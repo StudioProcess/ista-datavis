@@ -93,7 +93,17 @@ export function rectangle(x) {
     return factors;
 }
 
+// Allows proper preloading of awaitables within preload()
+async function preload(promise) {
+    const is_preload = ( self._incrementPreload != undefined && self._decrementPreload != undefined );
+    if (is_preload) self._incrementPreload();
+    const result = await promise;
+    if (is_preload) self._decrementPreload();
+    return promise;
+}
+
 export default {
+    preload,
     register_global,
     timestamp,
     rectangle,

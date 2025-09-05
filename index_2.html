@@ -92,13 +92,15 @@
         
         const grid = util.rectangle(SNP_COUNT);
         console.log('grid', grid);
-    
-        async function setup() {
-            await data.load('./data/dataMartin.csv');
+        
+        async function preload() {
+            await util.preload( data.load('./data/dataMartin.csv') );
             data.sort(DATA_SORTING);
             data.sort_snps(SNP_SORTING);
             console.log(data.raw());
-            
+        }
+    
+        async function setup() {
             noLoop();
             pixelDensity(1);
             createCanvas(X_COUNT * TILE_SIZE, Y_COUNT * TILE_SIZE);
@@ -231,7 +233,6 @@
         }
         
         async function draw() {
-            await data.loaded();
             background(0);
             draw_mosaic(X_COUNT, Y_COUNT, sample_offset);
         }
@@ -271,7 +272,7 @@
             }
         }
         
-        util.register_global(setup, draw, keyPressed);
+        util.register_global(preload, setup, draw, keyPressed);
         
     </script>
 </body>
