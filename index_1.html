@@ -51,7 +51,8 @@
         
         const MARK_COLOR_SNPS = true;
         const MARK_COL = [128, 128, 100];
-        const MARK_SCALE = 0.03;
+        const MARK_SCALE = 0.15;
+        const MARK_STYLE = 1; // 0 .. Centered circle, 1 .. B/L square
         
         const SPOT_STYLE = 1; // 0 .. Half circles, 1 .. Concentric circles
     
@@ -106,14 +107,15 @@
                 }
                 rect(x, y, cell_w, cell_h);
                 
-                const mark_weight = cell_w * MARK_SCALE;
+                let mark_size = cell_w * MARK_SCALE;
                 if (MARK_COLOR_SNPS && data.color_snp_indices().includes(idx)) {
-                    strokeWeight(mark_weight);
                     fill(...MARK_COL);
-                    rectMode(CENTER);
-                    // rect(x + cell_w/2, y + cell_w/2, cell_w/3, cell_h/3);
-                    circle(x + cell_w/2, y + cell_h/2, base/8);
-                    
+                    if (MARK_STYLE == 1) {
+                        rectMode(CORNERS);
+                        rect( x + cell_w - mark_size, y + cell_h - mark_size, x + cell_w, y + cell_h );
+                    } else {
+                        circle(x + cell_w/2, y + cell_h/2, mark_size);
+                    }
                 }
             }
             
