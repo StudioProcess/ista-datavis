@@ -252,11 +252,8 @@
                     sample_idx = start;
                     redraw();
                 },
-                onStop: () => {
-                    noLoop();
-                },
                 onBeforeUpdate: () => {
-                    if (step > 1) {
+                    if (step == 1) {
                         recorder.setNextFilename(`${sample_idx}`.padStart(7,'0') + '.png');
                     }
                 },
