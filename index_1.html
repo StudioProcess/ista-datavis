@@ -18,7 +18,7 @@
         
         // --------------------------------------------------------------------------------
         
-        const DATA_SORTING = 'location'; // id, time, location, color
+        const DATA_SORTING = 'time'; // id, time, location, color
         const SNP_SORTING = 0; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
         const SNP_COUNT = 100; // How many SNPs to show
@@ -47,7 +47,7 @@
         const COL_TIMELINE = [128, 128, 100];
         
         // Start / end index and step when using "Save all" (-1 means last)
-        const SAVE_ALL = [0, -1, 10];
+        const SAVE_ALL = [0, -1, 100];
         
         const MARK_COLOR_SNPS = true;
         const MARK_COL = [128, 128, 100];
@@ -247,7 +247,7 @@
             
             recorder.start({
                 canvasElement: document.querySelector('canvas'),
-                frames: Math.floor( (end - start) / step + 1 ),
+                frames: Math.floor( (end - start) / step ),
                 onStart: () => {
                     sample_idx = start;
                     redraw();
