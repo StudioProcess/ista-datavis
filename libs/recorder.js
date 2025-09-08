@@ -197,6 +197,8 @@ export function update(canvasElement) {
   
   if (!canvasElement) {
     console.warn('No canvas element to record!');
+    stop();
+    return;
   }
   
   addPNGToTarball(canvasElement, filename).then(() => {
@@ -232,7 +234,7 @@ export function stop() {
   
   state.recording = false;
   
-  if (tape) {
+  if (tape && tape.length > 0) {
     saveTarball({last:true});
   }
   

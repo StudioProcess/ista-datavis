@@ -201,6 +201,10 @@ export default class Tarball {
     this.length = 0;
   }
   
+  size() {
+    return this.length;
+  }
+  
   clear() {
     this.written = 0;
     this.out = utils.clean(this.blockSize);

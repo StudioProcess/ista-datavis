@@ -18,22 +18,22 @@
         // --------------------------------------------------------------------------------
        
         const DATA_SORTING = 'location'; // id, time, location, color
-        const SNP_SORTING = 0; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
+        const SNP_SORTING = 1; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
-        const SNP_COUNT = 100; // How many SNPs to show
+        const SNP_COUNT = 6; // How many SNPs to show
        
         // Number of samples horizontally
         const X_COUNT = 30;
         
         // Number of samples vertically
-        const Y_COUNT = 50;
+        const Y_COUNT = 53;
         
         // Size of each sample tile (together with X_COUNT/Y_COUNT determines canvas size)
         // Smaller (ca. 30) for quick rendering, higher (ca. 100) for high-res save
-        const TILE_SIZE = 50;
+        const TILE_SIZE = 3840/53;
         
         // Show the grid of samples?
-        const SHOW_GRID = true;
+        const SHOW_SAMPLES = true;
         
         // Show the ID text?
         const SHOW_ID = false;
@@ -79,12 +79,17 @@
         const BORDER_COL = [0, 60];
         
         // Border thickness
-        const BORDER_SCALE = 0.1;
+        const BORDER_SCALE = 0.025;
+        
+        // FILL in empty space on last page
+        const FILL_TAIL = true;
+        const TAIL_GAP = 1;
         
         // --------------------------------------------------------------------------------
         
         import data from './data.mjs'
         import util from './util.mjs';
+        import * as recorder from './libs/recorder.js';
         
         let sample_offset = 0;
         let start_idx, end_idx;
@@ -128,7 +133,7 @@
             const base = width / 10;
             
             // blendMode(BLEND);
-            if (SHOW_GRID) {
+            if (SHOW_SAMPLES) {
                 noStroke();
                 rectMode(CORNER);
                 for ( let [idx, val] of Object.values(s.snps).entries() ) {
@@ -241,11 +246,24 @@
                 pop();
                 i++;
             }
+            const is_last_page = end_idx % (x_count * y_count) < (x_count * y_count) - 1;
+            if (is_last_page && FILL_TAIL) {
+                randomSeed(0);
+                for (let idx=end_idx % (x_count * y_count); idx < (x_count * y_count)-TAIL_GAP; idx++) {
+                    let x = idx % x_count * width;
+                    let y = Math.floor(idx / x_count) * width;
+                    push();
+                    translate(x, y);
+                    draw_sample( int(random(end_idx-50, end_idx)) );
+                    pop();
+                }
+            }
         }
         
         async function draw() {
             background(0);
             draw_mosaic(X_COUNT, Y_COUNT, sample_offset);
+            recorder.update();
         }
         
         function saveFrame(ts = undefined) {
@@ -279,6 +297,24 @@
             redraw();
         }
         
+        function record() {
+            const total_pages = Math.ceil(data.num_samples() / (X_COUNT * Y_COUNT));
+            // console.log(total_pages);
+            recorder.start({
+                canvasElement: document.querySelector('canvas'),
+                frames: total_pages,
+                onStart: () => {
+                    sample_offset = 0;
+                    redraw();
+                },
+                // onBeforeUpdate: () => {
+                // },
+                onUpdate: () => {
+                    scroll_mosaic(X_COUNT * Y_COUNT);
+                },
+            });
+        }
+        
         function keyPressed(e) {
             if (e.key == 'ArrowLeft') {
                 scroll_mosaic(-X_COUNT * Y_COUNT);
@@ -294,6 +330,8 @@
                 else idx -= 6;
                 const options = [ 6, 12, 25, 50, 100 ];
                 set_snp_sorting( null, options[idx] );
+            } else if (key == 'x') {
+                record();
             }
         }
         
