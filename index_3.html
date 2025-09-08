@@ -18,12 +18,12 @@
         // --------------------------------------------------------------------------------
         
         const DATA_SORTING = 'location'; // id, time, location, color
-        const SNP_SORTING = 0; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
+        const SNP_SORTING = 1; // [ 'default', 'color_start', 'color_middle', 'color_end', 'alpha' ];
         
-        const SNP_COUNT = 100; // How many SNPs to show
+        const SNP_COUNT = 6; // How many SNPs to show
     
         // Main space for SNP Markers
-        const SPACE_MAIN = 1800;
+        const SPACE_MAIN = 1960;
         
         // Space for ID string
         const SPACE_LEFT = 100;
@@ -31,8 +31,10 @@
         // Sapce for Color Marker (Red/Yellow)
         const SPACE_RIGHT = 100;
         
+        const HEIGHT = 3840;
+        
         // Number of Samples (line) per page
-        const COUNT = 150;
+        const COUNT = 300;
         
         // Show the ID text?
         const SHOW_ID = true;
@@ -54,18 +56,28 @@
         };
         
         // Color for SNP no data
-        const COL_NODATA = [0, 0, 0];
+        const COL_NODATA = [60];
+        
+        const COL_ID_BACKGROUND = [255, 255, 243];
+        
+        // Color for SNP no data
+        const COL_TIMELINE = [128, 128, 100];
         
         // Color for Red value
         const COL_R = [255, 0, 0];
         
         // Color for Yellow value
         const COL_Y = [255, 255, 0];
+        
+        // FILL in empty space on last page
+        const FILL_TAIL = true;
+        const TAIL_GAP = 1;
     
         // --------------------------------------------------------------------------------
         
         import data from './data.mjs'
         import util from './util.mjs';
+        import * as recorder from './libs/recorder.js';
         
         let sample_offset = 0;
         let start_idx, end_idx;
@@ -89,7 +101,7 @@
             
             noLoop();
             pixelDensity(1);
-            createCanvas(SPACE_MAIN + SPACE_LEFT + SPACE_RIGHT, COUNT * SPACE_MAIN/101);
+            createCanvas(SPACE_MAIN + SPACE_LEFT + SPACE_RIGHT, HEIGHT);
             textFont(font);
         }
         
@@ -130,7 +142,7 @@
                 
                 // arc left (red)
                 if (s.color.red < 0) {
-                    fill(0);
+                    fill(...COL_NODATA);
                 } else {
                     let alpha = map(s.color.red, 0, 5, 0, 255);
                     fill(...COL_R, alpha);
@@ -139,7 +151,7 @@
                 
                 // arc right (yellow)
                 if (s.color.yellow < 0) {
-                    fill(0);
+                    fill(...COL_NODATA);
                 } else {
                     let alpha = map(s.color.yellow, 0, 5, 0, 255);
                     fill(...COL_Y, alpha);
@@ -150,7 +162,7 @@
             
             // timeline
             if (SHOW_TIMELINE) {
-                fill(40);
+                fill(COL_TIMELINE);
                 // blendMode(BLEND);
                 rectMode(CENTER);
                 const marker_w = cell_h * 0.33 * TIMELINE_SCALE;
@@ -174,16 +186,13 @@
             
             // draw id
             if (SHOW_ID) {
-                // blendMode(BLEND);
-                fill(255);
+                fill(...COL_ID_BACKGROUND);
                 noStroke();
                 rectMode(CORNER);
                 rect(0, 0, SPACE_LEFT, cell_h);
                 textAlign(LEFT, CENTER);
                 textSize(cell_h);
-                fill(0, 255);
-                stroke(255);
-                strokeWeight(2);
+                fill(0);
                 for (let [idx, ch] of s.id.split('').entries() ) {
                     let x = 5 + idx * (20);
                     text(ch, x, cell_h/2);
@@ -200,18 +209,31 @@
             
             let i = 0;
             for (let idx=start_idx; idx<=end_idx; idx++) {
-                let y = i * (SPACE_MAIN / 101);
+                let y = i * (height/COUNT);
                 push();
                 translate(0, y);
                 draw_sample(idx);
                 pop();
                 i++;
             }
+            
+            const is_last_page = end_idx % count < (count) - 1;
+            if (is_last_page && FILL_TAIL) {
+                randomSeed(0);
+                for (let idx=end_idx % count; idx < count-TAIL_GAP; idx++) {
+                    let y = idx * (height/COUNT);
+                    push();
+                    translate(0, y);
+                    draw_sample( int(random(end_idx-100, end_idx)) );
+                    pop();
+                }
+            }
         }
         
         async function draw() {
-            background(0);
+            background(...COL_NODATA);
             draw_fabric(COUNT, sample_offset);
+            recorder.update();
         }
         
         function saveFrame(ts = undefined) {
@@ -241,6 +263,24 @@
             redraw();
         }
         
+        function record() {
+            const total_pages = Math.ceil(data.num_samples() / COUNT);
+            // console.log(total_pages);
+            recorder.start({
+                canvasElement: document.querySelector('canvas'),
+                frames: total_pages,
+                onStart: () => {
+                    sample_offset = 0;
+                    redraw();
+                },
+                // onBeforeUpdate: () => {
+                // },
+                onUpdate: () => {
+                    scroll_fabric(COUNT);
+                },
+            });
+        }
+        
         function keyPressed(e) {
             if (e.key == 'ArrowLeft') {
                 scroll_fabric(-COUNT);
@@ -256,6 +296,8 @@
                 else idx -= 6;
                 const options = [ 6, 12, 25, 50, 100 ];
                 set_snp_sorting( null, options[idx] );
+            } else if (e.key == 'x') {
+                record();
             }
         }
         
