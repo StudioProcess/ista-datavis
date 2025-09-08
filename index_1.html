@@ -44,10 +44,10 @@
         const COL_ID = [40];
         
         // Color for Timeline markings
-        const COL_TIMELINE = [0];
+        const COL_TIMELINE = [128, 128, 100];
         
-        // Start / end index when using "Save all" (-1 means last)
-        const SAVE_ALL = [0, 1999];
+        // Start / end index and step when using "Save all" (-1 means last)
+        const SAVE_ALL = [0, -1, 10];
         
         const MARK_COLOR_SNPS = true;
         const MARK_COL = [128, 128, 100];
@@ -60,6 +60,7 @@
         
         import data from './data.mjs'
         import util from './util.mjs';
+        import * as recorder from './libs/recorder.js';
         
         let sample_idx = 0; // current sample index
         let snp_sorting = SNP_SORTING;
@@ -84,7 +85,7 @@
             
             noLoop();
             pixelDensity(1);
-            createCanvas(2000, 2000);
+            createCanvas(3840, 3840);
             textFont(font);
         }
         
@@ -114,7 +115,7 @@
                 }
                 rect(x, y, cell_w, cell_h);
                 
-                let mark_size = cell_w * MARK_SCALE;
+                let mark_size = base * MARK_SCALE;
                 if (MARK_COLOR_SNPS && data.color_snp_indices().includes(idx)) {
                     fill(...MARK_COL);
                     if (MARK_STYLE == 1) {
@@ -136,8 +137,8 @@
             // strokeWeight(1);
             noStroke();
             ellipse(width/2, height/2, spot_w, spot_h);
-            const col_red = s.color.red < 0 ? [0] : [ ...COL_R, map(s.color.red, 0, 5, 0, 255) ];
-            const col_yellow = s.color.yellow < 0 ? [0] : [ ...COL_Y, map(s.color.yellow, 0, 5, 0, 255) ];
+            const col_red = s.color.red < 0 ? COL_NODATA : [ ...COL_R, map(s.color.red, 0, 5, 0, 255) ];
+            const col_yellow = s.color.yellow < 0 ? COL_NODATA : [ ...COL_Y, map(s.color.yellow, 0, 5, 0, 255) ];
 
             if (SPOT_STYLE == 1) {
                 let outer_color;
@@ -153,10 +154,13 @@
                 fill(...outer_color);
                 ellipse(width/2, height/2, spot_w, spot_h);
                 // inner
-                fill(255);
-                ellipse(width/2, height/2, spot_w/2, spot_h/2);
-                fill(...inner_color);
-                ellipse(width/2, height/2, spot_w/2, spot_h/2);
+                // only draw, if different color from outer (avoids color fringe)
+                if (JSON.stringify(inner_color) != JSON.stringify(outer_color)) {
+                    fill(255);
+                    ellipse(width/2, height/2, spot_w/2, spot_h/2);
+                    fill(...inner_color);
+                    ellipse(width/2, height/2, spot_w/2, spot_h/2);
+                }
            } else {
                 // arc left (red)
                 fill(col_red);
@@ -169,7 +173,6 @@
             
             // timeline
             fill(...COL_TIMELINE);
-            blendMode(BLEND);
             rectMode(CENTER);
             const marker_w = base * 0.33;
             const marker_h = marker_w;
@@ -186,12 +189,11 @@
             }
             
             // draw id
-            blendMode(BLEND);
             textAlign(CENTER, CENTER);
             textSize(base * 2/3);
             fill(...COL_ID);
-            stroke(255);
-            strokeWeight(base * 0.001);
+            stroke(...COL_TIMELINE);
+            strokeWeight(base * 0.01);
             for (let [idx, ch] of s.id.split('').entries() ) {
                 let x = base + idx * (base * 2);
                 text(ch, x, height - base/2);
@@ -206,6 +208,8 @@
             // console.log( JSON.stringify(stats, null, 2) )
             
             draw_sample(sample_idx);
+            
+            recorder.update();
         }
         
         function next_sample(offset = 1) {
@@ -228,28 +232,39 @@
             saveCanvas(`${ts}_${idx.toString().padStart(5, '0')}.png`);
         }
         
-        function record(start=0, end=-1) {
-            const SAVE_INTERVAL = 100;
-            
+        function record(start=0, end=-1, step=1) {
             while (start < 0) {
                 start += data.num_samples();
             }
             while (end < 0) {
                 end += data.num_samples();
             }
-            console.log(`RECORDING #${start}–#${end}`);
+            step = Math.max(1, step);
+            
+            console.log(`RECORDING #${start}–#${end} / STEP ${step}`);
             
             const ts = util.timestamp();
             
-            let idx = start;
-            function saveloop() {
-                saveSample(idx, ts);
-                idx += 1;
-                if (idx <= end) {
-                    setTimeout(saveloop, SAVE_INTERVAL)
-                }
-            }
-            saveloop();
+            recorder.start({
+                canvasElement: document.querySelector('canvas'),
+                frames: Math.floor( (end - start) / step + 1 ),
+                onStart: () => {
+                    sample_idx = start;
+                    redraw();
+                },
+                onStop: () => {
+                    noLoop();
+                },
+                onBeforeUpdate: () => {
+                    if (step > 1) {
+                        recorder.setNextFilename(`${sample_idx}`.padStart(7,'0') + '.png');
+                    }
+                },
+                onUpdate: () => {
+                    sample_idx += step;
+                    redraw();
+                },
+            });
         }
         
         function set_snp_sorting(by, limit) {
