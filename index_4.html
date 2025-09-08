@@ -60,11 +60,13 @@
         let show_mesh = false;
         
         async function preload() {
+            util.begin_preload();
             my_shader = loadShader('./shaders/dither.vert.glsl', './shaders/dither.frag.glsl');
             noise_texture = loadImage('./images/1024_LDR_RGBA_0.png');
             
-            await util.preload( data.load('./data/dataMartin.csv') );
+            await data.load('./data/dataMartin.csv');
             console.log(data.raw());
+            util.end_preload();
         }
         
         const COLOR_0 = '#ffd0d4';

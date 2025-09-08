@@ -96,21 +96,25 @@
         let grid = util.rectangle(snp_count);
         console.log('grid', grid);
         
+        let font;
+        
         async function preload() {
-            await util.preload( data.load('./data/dataMartin.csv') );
+            util.begin_preload();
+            await data.load('./data/dataMartin.csv');
             console.log(data.raw());
+            
+            font = await util.load_font('./fonts/soehne-mono-leicht.ttf');
+            util.end_preload();
         }
     
         async function setup() {
-            let font = await util.load_font('./fonts/soehne-mono-leicht.ttf');
-            textFont(font);
-            
             data.sort(DATA_SORTING);
             data.sort_snps(snp_sorting, snp_count);
             
             noLoop();
             pixelDensity(1);
             createCanvas(X_COUNT * TILE_SIZE, Y_COUNT * TILE_SIZE);
+            textFont(font);
         }
         
         // Draw single sample

@@ -35,13 +35,45 @@
             });
         }
         
+        // async function preload() {
+        //     self._incrementPreload();
+        //     // await delay(1);
+        //     // console.log(self);
+        //     await delay(3000);
+        //     self._decrementPreload();
+        //     console.log('first part of preloading');
+        //     
+        //     self._incrementPreload();
+        //     // await delay(1);
+        //     // console.log(self);
+        //     await delay(1000);
+        //     self._decrementPreload();
+        //     
+        //     console.log('done preloading');
+        // }
+        
+        
         async function preload() {
-            // console.log(self);
-            self._incrementPreload();
-            await delay(3000);
-            self._decrementPreload();
             
-            console.log('done preloading');
+            util.begin_preload();
+            // self._incrementPreload();
+            
+            await util.preload(async function() {
+                await delay(3000);
+            });
+            console.log('preload async function done');
+            
+            
+            await util.preload(async function() {
+                await delay(3000);
+            });
+            console.log('preload async function 2 done');
+            
+            await util.preload( delay(3000) );
+            console.log('preload promise done');
+            
+            // self._decrementPreload();
+            util.end_preload();
         }
         
         // const loadingPromise = delay(5000);
@@ -49,6 +81,7 @@
         async function setup() {
             frameRate(1);
             // noLoop();
+            console.log('sync setup finished');
             await delay(3000);
             console.log('setup finished');
         }
@@ -57,7 +90,7 @@
             console.log(frameCount);
         }
         
-        util.register_global(preload,setup, draw);
+        util.register_global(preload, setup, draw);
         
         /*
             draw() runs without createCanvas();
@@ -68,9 +101,13 @@
             but draw() doesn't wait on awaited promises in setup
             
             self._incrementPreload() and self._decrementPreload() work withing preload()
+            ONLY if incrementPreload() is run syncronously.
+            mutliple increment/decrement pairs will also ONLY work syncronously.
             
             window._incrementPreload() or this._incrementPreload() do work
             but _incrementPreload() doesn't
+            
+            p5.prototype.registerPreloadMethod() seems to simply call increment preload automatically, so only decrement is necessary
         */
         
     </script>

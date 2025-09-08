@@ -63,16 +63,20 @@
         let show_map = false;
         let show_snps = false;
         let view_mode = 0;
+        let font;
         
         async function preload() {
+            util.begin_preload();
             map_image = await loadImage('./images/hybrid_zone_map_red.png');
             
-            await util.preload( data.load('./data/dataMartin.csv') );
+            await data.load('./data/dataMartin.csv');
             console.log(data.raw());
+            
+            font = await util.load_font('./fonts/soehne-mono-buch.ttf');
+            util.end_preload();
         }
         
         async function setup() {
-            let font = await util.load_font('./fonts/soehne-mono-buch.ttf');
             textFont(font);
             
             snp_names = data.snp_names();

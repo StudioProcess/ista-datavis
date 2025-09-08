@@ -94,12 +94,44 @@ export function rectangle(x) {
 }
 
 // Allows proper preloading of awaitables within preload()
-async function preload(promise) {
+// The Problem with this: Only one call works, except when doing multiple calls asyncronously
+/*
+async function preload(promise_or_fn) {
+    console.log('preload start');
     const is_preload = ( self._incrementPreload != undefined && self._decrementPreload != undefined );
     if (is_preload) self._incrementPreload();
-    const result = await promise;
+    
+    let result;
+    if (typeof promise_or_fn === 'function') {
+        if (promise_or_fn[Symbol.toStringTag] === 'AsyncFunction') {
+            result = await promise_or_fn();
+        } else {
+            result = promise_or_fn();
+        }
+    } else if (promise_or_fn?.then != undefined) {
+        result = await promise_or_fn;
+    }
+    
     if (is_preload) self._decrementPreload();
     return result;
+}
+*/
+
+// function register_preload(obj) {
+    // // const obj = { preload };
+    // p5.prototype.registerPreloadMethod('preload', obj);
+// }
+
+function is_preload() {
+    return self._incrementPreload != undefined && self._decrementPreload != undefined;
+}
+
+function begin_preload() {
+    if (is_preload()) self._incrementPreload();
+}
+
+function end_preload() {
+    if (is_preload()) self._decrementPreload();
 }
 
 function load_font(path, fallback = 'Helvetica') {
@@ -109,13 +141,16 @@ function load_font(path, fallback = 'Helvetica') {
         }, function() {
             console.warn(`Failed to load font; Fallback to ${fallback}`);
             resolve(fallback);
+            // loadFont doesn't resolve the waiting in case of failure
+            if (is_preload()) self._decrementPreload();
         });
     });
 }
 
 export default {
     load_font,
-    preload,
+    begin_preload,
+    end_preload,
     register_global,
     timestamp,
     rectangle,
