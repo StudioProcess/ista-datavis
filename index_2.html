@@ -28,9 +28,9 @@
         // Number of samples vertically
         const Y_COUNT = 53;
         
-        // Size of each sample tile (together with X_COUNT/Y_COUNT determines canvas size)
-        // Smaller (ca. 30) for quick rendering, higher (ca. 100) for high-res save
-        const TILE_SIZE = 3840/53;
+        
+        const WIDTH = 2160;
+        const HEIGHT = 3840;
         
         // Show the grid of samples?
         const SHOW_SAMPLES = true;
@@ -79,7 +79,7 @@
         const BORDER_COL = [0, 60];
         
         // Border thickness
-        const BORDER_SCALE = 0.025;
+        const BORDER_SCALE = 0.05;
         
         // FILL in empty space on last page
         const FILL_TAIL = true;
@@ -94,6 +94,9 @@
         let sample_offset = 0;
         let start_idx, end_idx;
         const sketch_ts = util.timestamp();
+        const tile_aspect = (WIDTH / X_COUNT) / (HEIGHT / Y_COUNT);
+        console.log(tile_aspect);
+        console.log(1/tile_aspect);
         
         let snp_count = SNP_COUNT;
         let snp_sorting = SNP_SORTING;
@@ -118,8 +121,24 @@
             
             noLoop();
             pixelDensity(1);
-            createCanvas(X_COUNT * TILE_SIZE, Y_COUNT * TILE_SIZE);
+            createCanvas(WIDTH, HEIGHT);
             textFont(font);
+        }
+        
+        function most_common_value(array) {
+            const frequencyMap = array.reduce((acc, val) => {
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+            let maxCount = 0;
+            let mostFrequentElement;
+            for (const [element, count] of Object.entries(frequencyMap)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    mostFrequentElement = element;
+                }
+            }
+            return mostFrequentElement;
         }
         
         // Draw single sample
@@ -128,9 +147,22 @@
             let s = data.get_sample(idx);
             // console.log(s);
             
+            noStroke();
+            // tile background with color of most common snp value (to hide scaling gaps)
+            const mcv = most_common_value(Object.values(s.snps));
+            if ( mcv < 0) {
+                fill( ...COL_NODATA );
+            } else {
+                fill( ...COL[mcv] );
+            }
+            rect(0, 0, width, width / tile_aspect);
+            
             const cell_w = width / grid[0];
-            const cell_h = cell_w * (grid[0] / grid[1]);
+            const cell_h = cell_w * (grid[0] / grid[1]) / tile_aspect;
             const base = width / 10;
+            
+            const tile_w = width;
+            const tile_h = width / tile_aspect;
             
             // blendMode(BLEND);
             if (SHOW_SAMPLES) {
@@ -157,7 +189,7 @@
                 rectMode(CORNER);
                 // stroke(0);
                 // strokeWeight(1);
-                ellipse(width/2, width/2, spot_w, spot_h);
+                ellipse(tile_w/2, tile_h/2, spot_w, spot_h);
                 noStroke();
                 
                 // arc left (red)
@@ -167,7 +199,7 @@
                     let alpha = map(s.color.red, 0, 5, 0, 255);
                     fill(...COL_R, alpha);
                 }
-                arc(width/2, width/2, spot_w, spot_h, HALF_PI, HALF_PI+PI);
+                arc(tile_w/2, tile_h/2, spot_w, spot_h, HALF_PI, HALF_PI+PI);
                 
                 // arc right (yellow)
                 if (s.color.yellow < 0) {
@@ -176,7 +208,7 @@
                     let alpha = map(s.color.yellow, 0, 5, 0, 255);
                     fill(...COL_Y, alpha);
                 }
-                arc(width/2, width/2, spot_w, spot_h, HALF_PI+PI, HALF_PI+TWO_PI);
+                arc(tile_w/2, tile_h/2, spot_w, spot_h, HALF_PI+PI, HALF_PI+TWO_PI);
             }
             
             // timeline
@@ -189,14 +221,14 @@
                 const marker_h = marker_w;
                 for (let year of s.years) {
                     let x = map(year, 2009, 2019, 0, width);
-                    rect(x, width - marker_h / 2, marker_w, marker_h);
+                    rect(x, tile_h - marker_h / 2, marker_w, marker_h);
                 }
                 // connector from first to last year
                 if (s.year_first != s.year_last) {
                     let x_start = map(s.year_first, 2009, 2019, 0, width);
                     let x_end   = map(s.year_last, 2009, 2019, 0, width);
                     rectMode(CORNER);
-                    rect(x_start + marker_w/2, width - marker_h/3, x_end - x_start - marker_w, marker_h/3);
+                    rect(x_start + marker_w/2, tile_h - marker_h/2.5, x_end - x_start - marker_w, marker_h/2.5);
                 }
             }
             
@@ -210,7 +242,7 @@
                 strokeWeight(2);
                 for (let [idx, ch] of s.id.split('').entries() ) {
                     let x = cell_w + idx * (cell_w * 2);
-                    text(ch, x, width - cell_h/2);
+                    text(ch, x, tile_h - cell_h/2);
                 }
             }
             
@@ -221,8 +253,7 @@
                 noFill();
                 const border_weight = cell_w * BORDER_SCALE;
                 strokeWeight(border_weight);
-                rect(0+border_weight, 0+border_weight, cell_w * 10 - border_weight, cell_h * 10 - border_weight);
-                rect(0, 0, cell_w * 10, cell_h * 10);
+                rect(0, 0, tile_w, tile_h);
             }
         }
         
@@ -239,7 +270,7 @@
             let i = 0;
             for (let idx=start_idx; idx<=end_idx; idx++) {
                 let x = i % x_count * width;
-                let y = Math.floor(i / x_count) * width;
+                let y = Math.floor(i / x_count) * width / tile_aspect;
                 push();
                 translate(x, y);
                 draw_sample(idx);
@@ -251,7 +282,7 @@
                 randomSeed(0);
                 for (let idx=end_idx % (x_count * y_count); idx < (x_count * y_count)-TAIL_GAP; idx++) {
                     let x = idx % x_count * width;
-                    let y = Math.floor(idx / x_count) * width;
+                    let y = Math.floor(idx / x_count) * width / tile_aspect;
                     push();
                     translate(x, y);
                     draw_sample( int(random(end_idx-50, end_idx)) );
@@ -261,7 +292,7 @@
         }
         
         async function draw() {
-            background(0);
+            background(...COL_NODATA);
             draw_mosaic(X_COUNT, Y_COUNT, sample_offset);
             recorder.update();
         }
