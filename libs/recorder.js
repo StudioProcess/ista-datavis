@@ -445,7 +445,7 @@ class FPSCounter {
     }
 }
 
-export function is_recording() {
+export function isRecording() {
   return state.recording;
 }
 
@@ -474,3 +474,16 @@ class Timer {
         }
     }
 }
+
+export default {
+  start,
+  stop,
+  toggle,
+  update,
+  setNextFilename,
+  now,
+  addTextToTarball,
+  addJSONToTarball,
+  setInfo,
+  isRecording,
+};
