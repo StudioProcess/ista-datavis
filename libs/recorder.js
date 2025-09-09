@@ -6,22 +6,22 @@
 //      periodically saves the canvas to PNGs and archives them as TAR
 // requires: canvas element, calls to update() from the render loop
 
+// 2025-09-09: add framerate to hud, default canvas, specify canvas in start, stop if no canvas, don't save empty tar, isRecording(), default export, simplified state
+
 import Tarball from './tar.js';
 // import { logFrame } from './main.js';
 
 const state = {
   startTime: 0, // time for first frame
   currentTime: 0, // current faked time
-  frameRate: 0, // recording frame rate
   frameTime: 0, // duration of a frame
   totalFrames: 0, // total frames to record. 0 means unbounded
   currentFrame: 0, // current recording frame
-  recording: false,
+  recording: false, // currently recording or not
   startRecording: false, // used to wait for one update() after recording was triggered
-  tarDownloadedSize: 0,
-  tarMaxSize: 0,
-  tarSequence: 0,
-  tarFilename: '',
+  tarDownloadedSize: 0, // size of already downloaded TARs (when saving in chunks)
+  tarSequence: 0, // sequence number for downloaded TARs
+  tarFilename: '', // current TAR filename
 };
 
 let tape; // Tarball (i.e. Tape ARchive)
@@ -81,15 +81,16 @@ function callRequestAnimationFrameCallbacks() {
 
 const default_options = {
   hijackTiming: false,
-  onStart: undefined,
-  onStop: undefined,
-  onBeforeUpdate: undefined,
-  onUpdate: undefined,
+  // callbacks
+  onStart: undefined, // immediately after start()
+  onStop: undefined, // immediately after stop()
+  onBeforeUpdate: undefined, // immediately before update()
+  onUpdate: undefined, // immediately after update()
   // onNextFilename: undefined,
-  start: undefined,
-  duration: undefined,
-  frames: undefined,
-  framerate: 30,
+  start: undefined, // start time in secs
+  duration: undefined, // duration to record in secs
+  frames: undefined, // frames to record (overrides duration)
+  framerate: 30, // framerate (for timecode display)
   chunk: 500, // max tar size in MB
   canvas: undefined, // canvas element
 };
@@ -103,9 +104,8 @@ export function start(_options) {
   options = Object.assign({}, default_options, _options);
   console.log('rec: starting', options);
   
-  // frame rate and time
-  state.frameRate = options.framerate;
-  state.frameTime = 1000 / state.frameRate;
+  // frame time
+  state.frameTime = 1000 / options.framerate;
   
   // start and current time
   if (options.start === undefined) {
@@ -121,13 +121,12 @@ export function start(_options) {
   if (options.duration === undefined) {
     state.totalFrames = 0;
   } else {
-    state.totalFrames = Math.ceil(options.duration * state.frameRate);
+    state.totalFrames = Math.ceil(options.duration * options.framerate);
   }
   if (options.frames !== undefined) {
     state.totalFrames = Math.ceil(options.frames);
   }
   
-  state.tarMaxSize = options.chunk;
   state.tarDownloadedSize = 0;
   state.tarSequence = 0;
   state.tarFilename = new Date().toISOString();
@@ -219,7 +218,7 @@ export function update(canvasElement) {
     // check for end of recording
     if (state.totalFrames > 0 && state.currentFrame >= state.totalFrames) {
       stop();
-    } else if (tape.length / 1000000 >= state.tarMaxSize) {
+    } else if (tape.length / 1000000 >= options.chunk) {
       saveTarball();
     }
     
@@ -383,12 +382,12 @@ function updateHUD() {
   let frames = (state.currentFrame + '').padStart(7,'0');
   frames += state.totalFrames > 0 ? '/' + state.totalFrames : '';
   let clock = new Date(state.currentTime - state.startTime).toISOString().substr(14, 5);
-  let intraSecondFrame = (state.currentFrame % state.frameRate + '').padStart(2, '0');
+  let intraSecondFrame = (state.currentFrame % options.framerate + '').padStart(2, '0');
   let dataAmount = dataAmountString(state.tarDownloadedSize + tape.length);
   const fps = `${fps_counter.fps.toFixed(2)}\u2009fps`; // using thin space \u2009
   const time = timer.time();
   // eslint-disable-next-line no-irregular-whitespace
-  hud.textContent = `●\u2009REC ${clock}.${intraSecondFrame}@${options.framerate}fps #${frames} ${dataAmount} ${fps} — ${time}`; // shows number of COMPLETE frames
+  hud.textContent = `●\u2009REC ${clock}.${intraSecondFrame}@${options.framerate}\u2009fps #${frames} ${dataAmount} ${fps} — ${time}`; // shows number of COMPLETE frames
   if (typeof hud_info === 'string') { hud.textContent += '\n' + hud_info };
 }
 
