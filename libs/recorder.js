@@ -91,7 +91,7 @@ const default_options = {
   frames: undefined,
   framerate: 30,
   chunk: 500, // max tar size in MB
-  canvasElement: undefined,
+  canvas: undefined, // canvas element
 };
 
 let options; // options set when calling start
@@ -140,6 +140,14 @@ export function start(_options) {
     // immediately start recording
     state.recording = true;
     state.startRecording = false;
+  }
+  
+  // Use first canvas, if any
+  if (!options.canvas) {
+    options.canvas = document?.querySelector('canvas'); // returns undefined if no document, and null if no canvas element
+    if (options.canvas) {
+      console.log('using canvas', options.canvas);
+    }
   }
   
   tape = new Tarball();
@@ -192,7 +200,7 @@ export function update(canvasElement) {
   console.log('CAPTURING FRAME #' + (state.currentFrame) + ' TIME ' + state.currentTime + ' FILE ' + filename);
   
   if (!canvasElement) {
-    canvasElement = options.canvasElement;
+    canvasElement = options.canvas;
   }
   
   if (!canvasElement) {

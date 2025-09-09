@@ -267,7 +267,6 @@
             const total_pages = Math.ceil(data.num_samples() / COUNT);
             // console.log(total_pages);
             recorder.start({
-                canvasElement: document.querySelector('canvas'),
                 frames: total_pages,
                 onStart: () => {
                     sample_offset = 0;
