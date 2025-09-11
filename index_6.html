@@ -22,10 +22,7 @@
         
         // --------------------------------------------------------------------------------
         
-        // const WIDTH = 1080;
-        // const HEIGHT = 1920;
-        const WIDTH = 2160;
-        const HEIGHT = 3840;
+        const WIDTH = 1080;
         
         // Map border in meters
         const BORDER = 1000;
@@ -47,25 +44,13 @@
             2: [255, 55, 140]
         };
         
-        // replacement colors for SNP_STYLE == 1
-        const GRAPH_COL = {
-            0: [200, 200, 0],
-        };
-        
-        const COL_BACKGROUND_BRIGHT = [255, 255, 221];
-        const COL_BACKGROUND_DARK = [40, 40, 30];
-        
-        let SNP_STYLE = 1; // 0 ... graph, 1 ... stacked bars
-        const BUCKETS = 250;
-        
-        const DISPLAY_BORDER = 0.011;
-        const DISPLAY_BORDER_BOTTOM = 0.022;
+        const SNP_STYLE = 1; // 0 ... graph, 1 ... stacked bars
+        const BUCKETS = 255;
         
         // --------------------------------------------------------------------------------
         
         import data from './data.mjs'
         import util from './util.mjs';
-        import recorder from './libs/recorder.js';
         
         const COLOR_SNPS = ["ros_assembly_543443", "ros_assembly_715001", "s91_122561",  "s316_93292", "s316_257789", "s1187_290152"];
 
@@ -76,11 +61,9 @@
         let map_image;
         let locations_image;
         let show_map = false;
-        let show_snps = true;
-        let show_samples = false;
+        let show_snps = false;
         let view_mode = 0;
         let font;
-        let border;
         
         async function preload() {
             util.begin_preload();
@@ -89,7 +72,7 @@
             await data.load('./data/dataMartin.csv');
             console.log(data.raw());
             
-            font = await util.load_font('./fonts/soehne-mono-leicht.ttf');
+            font = await util.load_font('./fonts/soehne-mono-buch.ttf');
             util.end_preload();
         }
         
@@ -101,7 +84,7 @@
             
             noLoop();
             pixelDensity(1);
-            createCanvas(WIDTH, HEIGHT);
+            createCanvas(WIDTH, WIDTH * ASPECT);
             locations_image = draw_locations();
             
             next_color_snp(0);
@@ -172,19 +155,9 @@
             let buckets = analyze_snp(name);
             let prev_x;
             let prev_val;
-            
-            const diag = Math.sqrt( Math.pow(width, 2) + Math.pow(height, 2) )
-            border = diag * DISPLAY_BORDER;
-            const border_bottom = diag * DISPLAY_BORDER_BOTTOM;
-            const avail_width = width - 2 * border;
-            const step = avail_width / buckets.length;
-            const bar_height = height - border - border_bottom;
-            
-            push();
-            translate(border, border);
-            
+            const step = width / buckets.length;
             for (let i=0; i<buckets.length; i++) {
-                const x = map(i, 0, buckets.length-1, 0, avail_width);
+                const x = map(i, 0, buckets.length-1, 0, width);
                 let val = [ 0, 0, 0 ];
                 if ( buckets[i]['total'] > 0) {
                     val = [
@@ -205,66 +178,45 @@
                         fill(...COL[idx], SNP_OPACITY);
                         // accident: 
                         // rect(x, height - (prev_total + val[idx]) * height, x + step, height - (prev_total) * height);
-                        rect(x, bar_height - (prev_total + val[idx]) * bar_height, x + step, bar_height - (prev_total) * bar_height);
+                        rect(x, height - (prev_total + val[idx]) * height, x + step, height - (prev_total) * height);
                         prev_total += val[idx];
                     }
                 } else {
                     if (i > 0) {
                         for (let idx=0; idx<3; idx++) {
-                            if (GRAPH_COL[idx]) {
-                                stroke(GRAPH_COL[idx]);
-                            } else {
-                                stroke(COL[idx]);
-                            }
-                            line(x, bar_height - val[idx] * bar_height, prev_x, bar_height - prev_val[idx] * bar_height);
+                            stroke(COL[idx]);
+                            line(x, height - val[idx] * height, prev_x, height - prev_val[idx] * height);
                         }
                     }
                 }
+                
                 prev_x = x;
                 prev_val = val;
             }
-            pop();
         }
         
         async function draw() {
-            let snp_name = snp_names[snp_idx]
-            console.log(snp_name);
+            await data.loaded();
+            background(255);
             
-            const is_color_snp = COLOR_SNPS.includes(snp_name);
-            
-            // global background
-            if (is_color_snp) {
-                background(...COL_BACKGROUND_BRIGHT);
-            } else {
-                background(...COL_BACKGROUND_DARK);
+            if (show_map) {
+                tint(255, MAP_OPACITY);
+                image(map_image, 0, 0, width, height);
             }
             
-            // inner background for graph style
-            // if (SNP_STYLE == 0) {
-            //     noStroke();
-            //     fill(...COL_BACKGROUND_DARK);
-            //     rect(border, border, width - 2*border, height - 2*border);
-            // }
-            
-            draw_snp(snp_name);
-            textAlign(CENTER, BOTTOM);
-            const text_scale = height / 1920;
-            textSize(20 * text_scale);
-            noStroke();
-            
-            let display_name = snp_name.toUpperCase();
-            if (is_color_snp) {
-                display_name = '•' + display_name;
-                fill(...COL_BACKGROUND_DARK);
-            } else {
-                fill(...COL_BACKGROUND_BRIGHT);
+            if (show_snps) {
+                const snp_name = snp_names[snp_idx];
+                console.log(snp_name);
+                draw_snp(snp_name);
+                textAlign(CENTER, BOTTOM);
+                textSize(16);
+                noStroke();
+                fill(40);
+                text(snp_name, width/2, height-10);
             }
-            text(display_name, width/2, height-10*text_scale);
             
-            textAlign(RIGHT, BOTTOM);
-            text(`SNP ${snp_idx+1}/${snp_names.length}`, width-20*text_scale, height-10*text_scale);
-            
-            recorder.update();
+            noTint();
+            image(locations_image, 0, 0);
         }
         
         function timestamp() {
@@ -296,49 +248,6 @@
             saveCanvas(`${ts}_${start_idx.toString().padStart(5, '0')}-${end_idx.toString().padStart(5, '0')}.png`);
         }
         
-        function switch_snp_style() {
-            SNP_STYLE = (SNP_STYLE + 1) % 2;
-            redraw();
-        }
-        
-        function record(what) {
-            let indices = [];
-            
-            if (what == 'color') {
-                for (let color_snp of COLOR_SNPS) {
-                    const idx = snp_names.indexOf(color_snp);
-                    indices.push(idx);
-                }
-            } else if (what == 'non_color') {
-                for (let snp_name of snp_names) {
-                    if (!COLOR_SNPS.includes(snp_name)) {
-                        const idx = snp_names.indexOf(snp_name);
-                        indices.push(idx);
-                    }
-                }
-            } else { // all
-                for (let i=0; i<snp_names.length; i++) {
-                    indices.push(i);
-                }
-            }
-            
-            const frames = snp_names.length;
-            let i = 0;
-            recorder.start({
-                frames: indices.length,
-                onStart: () => {
-                    snp_idx = indices[i];
-                    redraw();
-                },
-                onUpdate: () => {
-                    i++;
-                    snp_idx = indices[i];
-                    if (snp_idx == undefined) snp_idx = 0;
-                    redraw();
-                },
-            });
-        }
-        
         function keyPressed(e) {
             if (e.key == 'ArrowLeft') {
                 next_color_snp(-1);
@@ -353,13 +262,21 @@
             } else if (e.key == 'r') {
                 random_snp();
             } else if (e.key == ' ') {
-                switch_snp_style();
-            } else if (e.key == 'x') {
-                record();
-            } else if (e.key == 'c') {
-                record('color');
-            } else if (e.key == 'v') {
-                record('non_color');
+                view_mode = (view_mode + 1) % 3;
+                switch (view_mode) {
+                    case 0:
+                        show_map = false;
+                        show_snps = false;
+                        break;
+                    case 1:
+                        show_map = true;
+                        show_snps = false;
+                        break;
+                    case 2:
+                        show_map = false;
+                        show_snps = true;
+                }
+                redraw();
             }
         }
         
