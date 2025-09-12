@@ -22,8 +22,6 @@
         
         // --------------------------------------------------------------------------------
         
-        // const WIDTH = 1080;
-        // const HEIGHT = 1920;
         const WIDTH = 2160;
         const HEIGHT = 3840;
         
@@ -51,6 +49,7 @@
         const GRAPH_COL = {
             0: [200, 200, 0],
         };
+        const GRAPH_WEIGHT = 0.00066; // percentage of canvas diagonal
         
         const COL_BACKGROUND_BRIGHT = [255, 255, 221];
         const COL_BACKGROUND_DARK = [40, 40, 30];
@@ -81,6 +80,7 @@
         let view_mode = 0;
         let font;
         let border;
+        const display_diag = Math.sqrt(WIDTH * WIDTH + HEIGHT * HEIGHT);
         
         async function preload() {
             util.begin_preload();
@@ -142,8 +142,6 @@
             return out;
         }
         
-       
-        
         function draw_locations() {
             const g = createGraphics(width, height);
             g.noStroke();
@@ -173,9 +171,8 @@
             let prev_x;
             let prev_val;
             
-            const diag = Math.sqrt( Math.pow(width, 2) + Math.pow(height, 2) )
-            border = diag * DISPLAY_BORDER;
-            const border_bottom = diag * DISPLAY_BORDER_BOTTOM;
+            border = display_diag * DISPLAY_BORDER;
+            const border_bottom = display_diag * DISPLAY_BORDER_BOTTOM;
             const avail_width = width - 2 * border;
             const step = avail_width / buckets.length;
             const bar_height = height - border - border_bottom;
@@ -211,6 +208,7 @@
                 } else {
                     if (i > 0) {
                         for (let idx=0; idx<3; idx++) {
+                            strokeWeight(display_diag * GRAPH_WEIGHT);
                             if (GRAPH_COL[idx]) {
                                 stroke(GRAPH_COL[idx]);
                             } else {
@@ -238,13 +236,6 @@
             } else {
                 background(...COL_BACKGROUND_DARK);
             }
-            
-            // inner background for graph style
-            // if (SNP_STYLE == 0) {
-            //     noStroke();
-            //     fill(...COL_BACKGROUND_DARK);
-            //     rect(border, border, width - 2*border, height - 2*border);
-            // }
             
             draw_snp(snp_name);
             textAlign(CENTER, BOTTOM);
@@ -293,7 +284,8 @@
         
         function saveFrame(ts = undefined) {
             if (ts == undefined) ts = timestamp();
-            saveCanvas(`${ts}_${start_idx.toString().padStart(5, '0')}-${end_idx.toString().padStart(5, '0')}.png`);
+            const snp_name = snp_names[snp_idx];
+            saveCanvas(`${ts}_${snp_idx.toString().padStart(5, '0')}_${snp_name}.png`);
         }
         
         function switch_snp_style() {
