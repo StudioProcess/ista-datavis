@@ -55,8 +55,9 @@
         const COL_BACKGROUND_DARK = [40, 40, 30];
         
         let SNP_STYLE = 1; // 0 ... graph, 1 ... stacked bars
-        const BUCKETS = 250;
+        const SNP_BUCKETS = 250;
         const SNP_OPACITY = 250;
+        const SNP_SHOW_NODATA = false;
         
         const DISPLAY_BORDER = 0.011;
         const DISPLAY_BORDER_BOTTOM = 0.022;
@@ -81,6 +82,7 @@
         let view_mode = 0;
         let font;
         let border;
+        let show_nodata = SNP_SHOW_NODATA;
         const display_diag = Math.sqrt(WIDTH * WIDTH + HEIGHT * HEIGHT);
         
         async function preload() {
@@ -110,7 +112,7 @@
         
         function analyze_snp(name) {
             const out = [];
-            for (let i=0; i<BUCKETS; i++) {
+            for (let i=0; i<SNP_BUCKETS; i++) {
                 out.push({
                     total: 0,
                     no_data: 0,
@@ -123,7 +125,7 @@
             // sum all values
             for (let i=0; i<data.num_samples(); i++) {
                 const s = data.get_sample(i);
-                const bucket_idx = int( map(s.geolocation.easting, 410335.103808801, 434653.007924495, 0, BUCKETS-1) );
+                const bucket_idx = int( map(s.geolocation.easting, 410335.103808801, 434653.007924495, 0, SNP_BUCKETS-1) );
                 const snp_value = s.snps[name];
                 out[bucket_idx]['total'] += 1;
                 if (snp_value < 0) {
@@ -135,7 +137,7 @@
             
             // verify counts
             const sum = { total: 0, no_data: 0, 0: 0, 1: 0, 2:0 };
-            for (let i=0; i<BUCKETS; i++) {
+            for (let i=0; i<SNP_BUCKETS; i++) {
                 sum.total += out[i].total;
                 sum.no_data += out[i].no_data;
                 sum[0] += out[i][0];
@@ -189,11 +191,13 @@
             for (let i=0; i<buckets.length; i++) {
                 const x = map(i, 0, buckets.length-1, 0, avail_width);
                 let val = [ 0, 0, 0 ];
-                if ( buckets[i]['total'] > 0) {
+                
+                if ( buckets[i]['total'] - buckets[i]['no_data'] > 0) {
+                    const total = show_nodata ? buckets[i]['total'] : buckets[i]['total'] - buckets[i]['no_data'];
                     val = [
-                        buckets[i][0] / buckets[i]['total'],
-                        buckets[i][1] / buckets[i]['total'],
-                        buckets[i][2] / buckets[i]['total'],
+                        buckets[i][0] / total,
+                        buckets[i][1] / total,
+                        buckets[i][2] / total,
                     ];
                 } else if (i > 0) {
                     val = prev_val;
@@ -336,6 +340,11 @@
             });
         }
         
+        function toggle_show_nodata() {
+            show_nodata = !show_nodata;
+            redraw();
+        }
+        
         function keyPressed(e) {
             if (e.key == 'ArrowLeft') {
                 next_color_snp(-1);
@@ -357,6 +366,8 @@
                 record('color');
             } else if (e.key == 'v') {
                 record('non_color');
+            } else if (e.key == 'Tab') {
+                toggle_show_nodata();
             }
         }
         
