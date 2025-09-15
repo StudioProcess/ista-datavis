@@ -46,6 +46,7 @@
         
         const SNP_STYLE = 1; // 0 ... graph, 1 ... stacked bars
         const BUCKETS = 255;
+        const SNP_OPACITY = 250;
         
         // --------------------------------------------------------------------------------
         
@@ -101,8 +102,8 @@
                     2: 0,
                 });
             }
-            // sum all values
             
+            // sum all values
             for (let i=0; i<data.num_samples(); i++) {
                 const s = data.get_sample(i);
                 const bucket_idx = int( map(s.geolocation.easting, 410335.103808801, 434653.007924495, 0, BUCKETS-1) );
@@ -114,14 +115,6 @@
                     out[bucket_idx][snp_value] += 1;
                 }
             }
-            // // calculate distribution
-            // for (let i=0; i<BUCKETS; i++) {
-            //     const count = out[i]['counts']['total'];
-            //     const mapped = Object.entries(out[i]['counts']).map( ([k, v]) => {
-            //         return [k,  count > 0 ? v / count : 0];
-            //     });
-            //     out[i]['distribution'] = Object.fromEntries(mapped);
-            // }
             return out;
         }
         
@@ -158,17 +151,18 @@
             const step = width / buckets.length;
             for (let i=0; i<buckets.length; i++) {
                 const x = map(i, 0, buckets.length-1, 0, width);
+                // calculate proportions
                 let val = [ 0, 0, 0 ];
                 if ( buckets[i]['total'] > 0) {
                     val = [
                         buckets[i][0] / buckets[i]['total'],
                         buckets[i][1] / buckets[i]['total'],
                         buckets[i][2] / buckets[i]['total'],
+                        buckets[i]['no_data'] / buckets[i]['total'],
                     ];
                 } else if (i > 0) {
                     val = prev_val;
                 }
-                const SNP_OPACITY = 250;
                 
                 if (SNP_STYLE == 1) {
                     noStroke();
